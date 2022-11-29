@@ -106,7 +106,7 @@ def intersect_of_circle(x1, y1, r1, x2, y2, r2):
 def main():
     ti.init(arch=ti.cuda)
 
-    dt = 0.0075
+    dt = 0.0035
     substeps = int(1 / 60 // dt)
 
     info = [
@@ -121,6 +121,9 @@ def main():
 
     linkage = Linkage(info, extra_lines)
 
+    # result_dir = "/Users/lf/llaf/linkage-tc/results"
+    # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
+
     window = ti.ui.Window("Grashof’s Four-Bar Linkage", (768, 768))
     canvas = window.get_canvas()
     scene = ti.ui.Scene()
@@ -130,7 +133,7 @@ def main():
 
     current_t = 0.0
     steps = 0
-    while window.running:
+    while True:
         for i in range(substeps):
             linkage.substep(steps)
             steps += 1
@@ -139,15 +142,19 @@ def main():
 
         camera.track_user_inputs(window, movement_speed=0.05, hold_key=ti.ui.LMB)
         scene.set_camera(camera)
-        scene.ambient_light((1, 1, 1))
-        scene.point_light(pos=(0.5, 1.5, 1.5), color=(0.1, 0.1, 0.1))
+        scene.ambient_light((0.8, 0.8, 0.8))
+        scene.point_light(pos=(0, 0, 20), color=(1, 1, 1))
 
         scene.particles(linkage.get_vertices(), color=(0.68, 0.26, 0.19), radius=0.5)
         scene.lines(linkage.get_vertices(), indices=linkage.get_indices(), color=(0.28, 0.68, 0.99), width=5.0,
                     vertex_count=linkage.get_even_n())
 
         canvas.scene(scene)
+        # video_manager.write_frame(window.get_image_buffer_as_numpy())
+
         window.show()
+
+    # video_manager.make_video(gif=True, mp4=False)
 
 
 if __name__ == '__main__':
