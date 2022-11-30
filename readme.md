@@ -6,3 +6,4 @@
 [ ] different color on different ball type  
 [x] use an object and method instead of global variable  
 [ ] make line wider  
+[ ] use derived class for vertex  

@@ -104,12 +104,36 @@ def intersect_of_circle(x1, y1, r1, x2, y2, r2):
     return [a3, b3], [a4, b4]
 
 
-def main():
-    ti.init(arch=ti.cuda)
+def linkage0() -> Linkage:
+    info = [
+        VertexInfo(VertexType.Fixed, [0, 0]),
+        VertexInfo(VertexType.Driver, [0, 0, 5, 0, math.pi * 2]),
+    ]
+    extra_lines = [[0, 1]]
+    return Linkage(info, extra_lines)
 
-    dt = 0.01
-    substeps = int(1 / 60 // dt)
 
+def linkage1() -> Linkage:
+    info = [
+        VertexInfo(VertexType.Fixed, [0, 0]),
+        VertexInfo(VertexType.Driver, [0, 0, 5, 0, math.pi * 2]),
+        VertexInfo(VertexType.Driven, [0, 3.5, 1, 3.5, 0]),
+    ]
+    return Linkage(info)
+
+
+def GrashofFourBarLinkage(radius: float = 1.0) -> Linkage:
+    info = [
+        VertexInfo(VertexType.Fixed, [0.0, 0.0]),
+        VertexInfo(VertexType.Fixed, [5.0, 0.0]),
+        VertexInfo(VertexType.Driver, [0.0, 0.0, radius, 0.0, math.pi * 2]),
+        VertexInfo(VertexType.Driven, [1, 7.0, 2, 6.0, 1]),
+    ]
+    extra_lines = [[0, 1], [0, 2]]
+    return Linkage(info, extra_lines)
+
+
+def PeaucellierStraightLinkage() -> Linkage:
     info = [
         VertexInfo(VertexType.Fixed, [-3.0, 0.0]),
         VertexInfo(VertexType.Fixed, [0.0, 0.0]),
@@ -121,13 +145,22 @@ def main():
     extra_lines = [
         [1, 2]
     ]
+    return Linkage(info, extra_lines)
 
-    linkage = Linkage(info, extra_lines)
+
+def main():
+    ti.init(arch=ti.cuda)
+
+    dt = 0.008
+    substeps = int(1 / 60 // dt)
+
+    # linkage = GrashofFourBarLinkage(3)
+    linkage = PeaucellierStraightLinkage()
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
 
-    window = ti.ui.Window("Peaucellier Linkage", (768, 768))
+    window = ti.ui.Window("Leafall Linkage", (768, 768))
     canvas = window.get_canvas()
     scene = ti.ui.Scene()
     camera = ti.ui.Camera()
