@@ -7,3 +7,5 @@
 [x] use an object and method instead of global variable  
 [ ] make line wider  
 [ ] use derived class for vertex  
+[ ] press space to pause the show
+[ ] make move slower more
