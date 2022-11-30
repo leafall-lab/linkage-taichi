@@ -56,8 +56,8 @@ class Linkage:
         for i in range(len(lines)):
             self.line_indices[i] = lines[i]
 
-        self.colors = ti.Vector.field(3, dtype=ti.f32, shape=len(colors))
         if colors is not None:
+            self.colors = ti.Vector.field(3, dtype=ti.f32, shape=len(colors))
             for i in range(len(colors)):
                 self.colors[i] = colors[i]
 
@@ -69,8 +69,8 @@ class Linkage:
                 self.vertices[i] = [info.param[0], info.param[1], 0]
             elif info.tp == VertexType.Driver:
                 cycle = info.param[4] - info.param[3]
-                # theta = step * 0.01 % cycle + info.param[3]  # cycle
-                theta = cycle - abs(cycle - step * 0.01 % (cycle * 2)) + info.param[3]  # wander
+                theta = step * 0.01 % cycle + info.param[3]  # cycle
+                # theta = cycle - abs(cycle - step * 0.01 % (cycle * 2)) + info.param[3]  # wander
                 self.vertices[i] = [info.param[0] + info.param[2] * math.cos(theta),
                                     info.param[1] + info.param[2] * math.sin(theta), 0]
             elif self.vertex_infos[i].tp == VertexType.Driven:
@@ -87,7 +87,7 @@ class Linkage:
         return self.line_indices
 
     def get_colors(self):
-        return self.colors
+        return self.colors if hasattr(self, 'colors') else None
 
     def get_even_n(self):
         return (self.N - 1) // 2 * 2
