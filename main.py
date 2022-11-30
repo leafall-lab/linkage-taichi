@@ -21,7 +21,7 @@ class VertexInfo:
         :param tp: vertex type
         :param param: some parameters for vertex,
             for Fixed vertex, param contains position [x, y]
-            for Driver vertex, param contains initial position and circle central position [x0, y0, r]
+            for Driver vertex, param contains center of circle, radius, initial angle, max angle  [x0, y0, r, theta0, theta1]
             for Driven vertex, param contains double (vertex id, radius) and a direction hint(0/1)
                 [id1, r1, id2, r2, hint]
 
@@ -31,7 +31,7 @@ class VertexInfo:
         if tp == VertexType.Fixed:
             assert len(param) == 2  # todo: support 3-D position
         elif tp == VertexType.Driver:
-            assert len(param) == 3  # todo: support initial position
+            assert len(param) == 5
         elif tp == VertexType.Driven:
             assert len(param) == 5
 
@@ -62,8 +62,9 @@ class Linkage:
             if info.tp == VertexType.Fixed:
                 self.vertices[i] = [info.param[0], info.param[1], 0]
             elif info.tp == VertexType.Driver:
-                self.vertices[i] = [info.param[0] + info.param[2] * math.cos(step * 0.01),
-                                    info.param[1] + info.param[2] * math.sin(step * 0.01), 0]
+                theta = step * 0.01 % (info.param[4] - info.param[3]) + info.param[3]
+                self.vertices[i] = [info.param[0] + info.param[2] * math.cos(theta),
+                                    info.param[1] + info.param[2] * math.sin(theta), 0]
             elif self.vertex_infos[i].tp == VertexType.Driven:
                 id1, r1, id2, r2, hint = info.param
                 x1, y1 = self.vertices[id1][0], self.vertices[id1][1]
@@ -106,17 +107,19 @@ def intersect_of_circle(x1, y1, r1, x2, y2, r2):
 def main():
     ti.init(arch=ti.cuda)
 
-    dt = 0.0035
+    dt = 0.01
     substeps = int(1 / 60 // dt)
 
     info = [
+        VertexInfo(VertexType.Fixed, [-3.0, 0.0]),
         VertexInfo(VertexType.Fixed, [0.0, 0.0]),
-        VertexInfo(VertexType.Fixed, [5.0, 0.0]),
-        VertexInfo(VertexType.Driver, [0.0, 0.0, 1.0]),
-        VertexInfo(VertexType.Driven, [1, 7.0, 2, 6.0, 1]),
+        VertexInfo(VertexType.Driver, [0.0, 0.0, 3.0, -1, 1]),
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 0]),
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 1]),
+        VertexInfo(VertexType.Driven, [3, 2.0, 4, 2.0, 0]),
     ]
     extra_lines = [
-        [0, 1], [0, 2]
+        [1, 2]
     ]
 
     linkage = Linkage(info, extra_lines)
@@ -124,7 +127,7 @@ def main():
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
 
-    window = ti.ui.Window("Grashof’s Four-Bar Linkage", (768, 768))
+    window = ti.ui.Window("Peaucellier Linkage", (768, 768))
     canvas = window.get_canvas()
     scene = ti.ui.Scene()
     camera = ti.ui.Camera()
