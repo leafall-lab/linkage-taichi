@@ -1,5 +1,6 @@
 import enum
 import math
+import sys
 from typing import List, Tuple
 
 import taichi as ti
@@ -205,7 +206,8 @@ def main():
     substeps = int(1 / 100 // dt)
 
     # linkage = GrashofFourBarLinkage(3)
-    linkage = Axes()
+    name = sys.argv[1] if len(sys.argv) > 1 else "Axes"
+    linkage = eval(name + "()")
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
