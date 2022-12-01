@@ -147,9 +147,9 @@ def GrashofFourBarLinkage(radius: float = 1.0) -> Linkage:
 
 def PeaucellierStraightLinkage() -> Linkage:
     info = [
-        VertexInfo(VertexType.Fixed, [3.0, 7.5]),
-        VertexInfo(VertexType.Fixed, [3.0, 4.5]),
-        VertexInfo(VertexType.Driver, [3.0, 4.5, 3.0, -2.25, -0.8]),
+        VertexInfo(VertexType.Fixed, [3.0, -7.5]),
+        VertexInfo(VertexType.Fixed, [3.0, -4.5]),
+        VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),
         VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 0]),
         VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 1]),
         VertexInfo(VertexType.Driven, [3, 2.0, 4, 2.0, 0]),
@@ -164,9 +164,9 @@ def Axes() -> Linkage:
     basic: float = 3.2
 
     info = [
-        VertexInfo(VertexType.Fixed, [3.0, 7.5]),  # 0
-        VertexInfo(VertexType.Fixed, [3.0, 4.5]),  # 1
-        VertexInfo(VertexType.Driver, [3.0, 4.5, 3.0, -2.25, -0.8]),  # 2, driver
+        VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # 0
+        VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # 1
+        VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # 2, driver
         VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 0]),  # 3
         VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 1]),  # 4
         VertexInfo(VertexType.Driven, [3, 2.0, 4, 2.0, 0]),  # 5, Peaucellier straight line, (0,0) <-> (6,0), x-axis
@@ -199,6 +199,56 @@ def Axes() -> Linkage:
     return Linkage(info, extra_lines, colors)
 
 
+def Adder() -> Linkage:
+    basic: float = 3.2
+
+    adder_len = 3.2
+
+    info = [
+        # x-axis
+        VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # 0
+        VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # 1
+        VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # 2, driver
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 0]),  # 3
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 1]),  # 4
+        VertexInfo(VertexType.Driven, [3, 2.0, 4, 2.0, 0]),  # 5, Peaucellier straight line, (0,0) <-> (6,0), x-axis
+        # y-axis
+        VertexInfo(VertexType.Fixed, [0.0, 0.0]),  # 6, origin
+        VertexInfo(VertexType.Driven, [5, basic, 6, basic, 0]),  # 7
+        VertexInfo(VertexType.Driven, [5, basic, 6, basic, 1]),  # 8
+        VertexInfo(VertexType.Driven, [6, basic, 7, basic * math.sqrt(2), 0]),  # 9
+        VertexInfo(VertexType.Driven, [6, basic, 8, basic * math.sqrt(2), 0]),  # 10
+        VertexInfo(VertexType.Driven, [9, basic, 10, basic, 1]),  # 11, y-axis
+        # add x+y
+        VertexInfo(VertexType.Driven, [6, adder_len, 5, adder_len, 1]),  # 12
+        VertexInfo(VertexType.Driven, [6, adder_len, 11, adder_len, 1]),  # 13
+        VertexInfo(VertexType.Driven, [12, adder_len, 13, adder_len, 1]),  # 14
+        VertexInfo(VertexType.Driven, [5, adder_len, 14, adder_len, 1]),  # 15
+        VertexInfo(VertexType.Driven, [14, adder_len, 11, adder_len, 1]),  # 16
+        VertexInfo(VertexType.Driven, [15, adder_len, 16, adder_len, 1]),  # 17
+    ]
+    extra_lines = [
+        [1, 2], [6, 5], [6, 11]
+    ]
+
+    # blue = (0.28, 0.68, 0.99)
+    # green = (0.68, 0.99, 0.28)
+    # red = (0.99, 0.28, 0.68)
+    blue = (0, 0, 0)
+    green = (0, 0, 0)
+    red = (0.99, 0.28, 0.68)
+    yellow = (0.99, 0.99, 0.28)
+    colors = [
+        blue, blue, blue, blue, blue,
+        red,
+        green, green, green, green, green,
+        red,
+        yellow, yellow, yellow, yellow, yellow, red
+    ]
+
+    return Linkage(info, extra_lines, colors)
+
+
 def main():
     ti.init(arch=ti.cuda)
 
@@ -206,7 +256,7 @@ def main():
     substeps = int(1 / 100 // dt)
 
     # linkage = GrashofFourBarLinkage(3)
-    name = sys.argv[1] if len(sys.argv) > 1 else "Axes"
+    name = sys.argv[1] if len(sys.argv) > 1 else "Adder"
     linkage = eval(name + "()")
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"

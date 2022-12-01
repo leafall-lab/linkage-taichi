@@ -37,3 +37,4 @@ python3 main.py PeaucellierStraightLinkage
 - [ ] reduce deviation
 - [ ] use mouse drag the points and lines
 - [ ] add command line argument to control save video or not
+- [ ] replace `hint` for driven point with `not equal with x`
