@@ -24,7 +24,8 @@ class VertexInfo:
             for Fixed vertex, param contains position [x, y]
             for Driver vertex, param contains center of circle, radius, initial angle, max angle  [x0, y0, r, theta0, theta1]
             for Driven vertex, param contains double (vertex id, radius) and a direction hint(0/1)
-                [id1, r1, id2, r2, hint]
+                [id1, r1, id2, r2, hint, [anti-hint-vertex]], anti-hint means the node's position should not equal on anti-hint-vertex
+                this is more priority than "hint"
 
         Example::
             Vertex(VertexType.Fixed, [0, 0])
@@ -34,7 +35,7 @@ class VertexInfo:
         elif tp == VertexType.Driver:
             assert len(param) == 5
         elif tp == VertexType.Driven:
-            assert len(param) == 5
+            assert len(param) == 5 or len(param) == 6
 
         self.tp = tp
         self.param = param
@@ -75,10 +76,15 @@ class Linkage:
                 self.vertices[i] = [info.param[0] + info.param[2] * math.cos(theta),
                                     info.param[1] + info.param[2] * math.sin(theta), 0]
             elif self.vertex_infos[i].tp == VertexType.Driven:
-                id1, r1, id2, r2, hint = info.param
+                id1, r1, id2, r2, hint = info.param[:5]
                 x1, y1 = self.vertices[id1][0], self.vertices[id1][1]
                 x2, y2 = self.vertices[id2][0], self.vertices[id2][1]
                 x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[hint]
+                if len(info.param) == 6:
+                    anti_hint = info.param[5]
+                    xh, yh = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
+                    if x0 - xh < 1e-5 and y0 - yh < 1e-5:
+                        x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
                 self.vertices[i] = [x0, y0, 0]
 
     def get_vertices(self):
@@ -223,8 +229,8 @@ def Adder() -> Linkage:
         VertexInfo(VertexType.Driven, [6, adder_len, 5, adder_len, 1]),  # 12
         VertexInfo(VertexType.Driven, [6, adder_len, 11, adder_len, 1]),  # 13
         VertexInfo(VertexType.Driven, [12, adder_len, 13, adder_len, 1]),  # 14
-        VertexInfo(VertexType.Driven, [5, adder_len, 14, adder_len, 1]),  # 15
-        VertexInfo(VertexType.Driven, [14, adder_len, 11, adder_len, 1]),  # 16
+        VertexInfo(VertexType.Driven, [5, adder_len, 14, adder_len, 1, 12]),  # 15, not equal on 12
+        VertexInfo(VertexType.Driven, [14, adder_len, 11, adder_len, 1, 13]),  # 16, not equal on 13
         VertexInfo(VertexType.Driven, [15, adder_len, 16, adder_len, 1]),  # 17
     ]
     extra_lines = [
