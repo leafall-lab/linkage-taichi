@@ -1,6 +1,5 @@
 import enum
 import math
-import sys
 from typing import List, Tuple
 
 import taichi as ti
@@ -297,11 +296,57 @@ def Multiplier(multiple: float = 0.5) -> Linkage:
     return Linkage(info, extra_lines)
 
 
-# class LinkageBuilder: def __init__(self, infos: List[VertexInfo], extra_lines: List[List[int]], colors: List[Tuple[
-# float, float, float]]): self.infos = infos self.extra_lines = extra_lines self.colors = colors
-#
-#     def get_linkage(self):
-#         return Linkage(self.infos, self.extra_lines, self.colors)
+class LinkageBuilder:
+    def __init__(self):
+        self.infos: List[VertexInfo] = []
+        self.extra_lines: List[List[int]] = []
+        self.colors: List[Tuple[float, float, float]] = None
+
+    # add a Peaucellier straight line
+    # need: nothing
+    # return: id of x
+    def add_straight_line(self) -> int:
+        n: int = self.vertices()
+
+        self.infos.extend([
+            VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # +0
+            VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # +1
+            VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # +2
+            VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 0]),  # +3
+            VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 1]),  # +4
+            VertexInfo(VertexType.Driven, [n + 3, 2.0, n + 4, 2.0, 0]),  # +5, x-axis
+        ])
+        self.extra_lines.append([n + 1, n + 2])
+
+        return self.vertices() - 1
+
+    def add_origin(self) -> int:
+        self.infos.extend([VertexInfo(VertexType.Fixed, [0.0, 0.0])])  # +0
+        return self.vertices() - 1
+
+    # add axes from straight line
+    # need: id of origin and x
+    # return: id of y
+    def add_axes(self, o: int, x: int) -> int:
+        n: int = self.vertices()
+
+        basic = 3.2
+
+        self.infos.extend([
+            VertexInfo(VertexType.Driven, [o, basic, x, basic, 1]),  # +0
+            VertexInfo(VertexType.Driven, [o, basic, x, basic, 0]),  # +1
+            VertexInfo(VertexType.Driven, [o, basic, n + 0, basic * math.sqrt(2), 0]),  # +2
+            VertexInfo(VertexType.Driven, [o, basic, n + 1, basic * math.sqrt(2), 0]),  # +3
+            VertexInfo(VertexType.Driven, [n + 2, basic, n + 3, basic, 1]),  # +4, y-axis
+        ])
+
+        return self.vertices() - 1
+
+    def vertices(self):
+        return len(self.infos)
+
+    def get_linkage(self):
+        return Linkage(self.infos, self.extra_lines, self.colors)
 
 
 def main():
@@ -310,9 +355,16 @@ def main():
     dt = 0.01  # <= 0.01, 0.01 is slowest.
     substeps = int(1 / 100 // dt)
 
-    # linkage = GrashofFourBarLinkage(3)
-    name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
-    linkage = eval(name + "()")
+    # # linkage = GrashofFourBarLinkage(3)
+    # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
+    # linkage = eval(name + "()")
+
+    builder = LinkageBuilder()
+    x = builder.add_straight_line()
+    o = builder.add_origin()
+    y = builder.add_axes(o, x)
+    
+    linkage = builder.get_linkage()
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
