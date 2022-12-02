@@ -255,6 +255,55 @@ def Adder() -> Linkage:
     return Linkage(info, extra_lines, colors)
 
 
+def Multiplier() -> Linkage:
+    basic: float = 3.2
+    multiple: float = 3
+
+    info = [
+        # x-axis
+        VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # 0
+        VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # 1
+        VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # 2, driver
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 0]),  # 3
+        VertexInfo(VertexType.Driven, [0, 7.0, 2, 2.0, 1]),  # 4
+        VertexInfo(VertexType.Driven, [3, 2.0, 4, 2.0, 0]),  # 5, Peaucellier straight line, (0,0) <-> (6,0), x-axis
+        VertexInfo(VertexType.Fixed, [0.0, 0.0]),  # 6, origin
+        # multiplier
+        VertexInfo(VertexType.Driven, [5, basic, 6, basic, 1]),  # 7
+        VertexInfo(VertexType.Driven, [6, multiple * basic, 7, (multiple - 0.999999) * basic, 1]),  # 8
+        VertexInfo(VertexType.Driven, [5, (multiple - 0.999999) * basic, 8, basic, 1]),  # 9
+        VertexInfo(VertexType.Driven, [8, multiple * basic, 9, (multiple - 0.999999) * basic, 1]),  # 10
+
+    ]
+    extra_lines = [
+        [1, 2]
+    ]
+
+    # blue = (0.28, 0.68, 0.99)
+    # green = (0.68, 0.99, 0.28)
+    # red = (0.99, 0.28, 0.68)
+    # blue = (0, 0, 0)
+    # green = (0, 0, 0)
+    # red = (0.99, 0.28, 0.68)
+    # yellow = (0.99, 0.99, 0.28)
+    # colors = [
+    #     # blue, blue, blue, blue, blue,
+    #     # red,
+    #     # green, green, green, green, green,
+    #     # red,
+    #     # yellow, yellow, yellow, yellow, yellow, red
+    # ]
+
+    return Linkage(info, extra_lines)
+
+
+# class LinkageBuilder: def __init__(self, infos: List[VertexInfo], extra_lines: List[List[int]], colors: List[Tuple[
+# float, float, float]]): self.infos = infos self.extra_lines = extra_lines self.colors = colors
+#
+#     def get_linkage(self):
+#         return Linkage(self.infos, self.extra_lines, self.colors)
+
+
 def main():
     ti.init(arch=ti.cuda)
 
@@ -262,7 +311,7 @@ def main():
     substeps = int(1 / 100 // dt)
 
     # linkage = GrashofFourBarLinkage(3)
-    name = sys.argv[1] if len(sys.argv) > 1 else "Adder"
+    name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     linkage = eval(name + "()")
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
