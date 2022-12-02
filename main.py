@@ -272,13 +272,19 @@ def main():
     current_t = 0.0
     steps = 0
 
+    step_diff = 1
+
     while True:
         for i in range(substeps):
             linkage.substep(steps)
-            steps += 1
+            steps += step_diff
 
             current_t += dt
         # print(linkage.get_vertices())
+
+        if window.get_event(ti.ui.PRESS):
+            if window.event.key == ' ':  # space
+                step_diff = 1 - step_diff
 
         camera.track_user_inputs(window, movement_speed=0.05, hold_key=ti.ui.LMB)
         scene.set_camera(camera)
