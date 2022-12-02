@@ -255,9 +255,8 @@ def Adder() -> Linkage:
     return Linkage(info, extra_lines, colors)
 
 
-def Multiplier() -> Linkage:
+def Multiplier(multiple: float = 0.5) -> Linkage:
     basic: float = 3.2
-    multiple: float = 3
 
     info = [
         # x-axis
@@ -270,9 +269,10 @@ def Multiplier() -> Linkage:
         VertexInfo(VertexType.Fixed, [0.0, 0.0]),  # 6, origin
         # multiplier
         VertexInfo(VertexType.Driven, [5, basic, 6, basic, 1]),  # 7
-        VertexInfo(VertexType.Driven, [6, multiple * basic, 7, (multiple - 0.999999) * basic, 1]),  # 8
-        VertexInfo(VertexType.Driven, [5, (multiple - 0.999999) * basic, 8, basic, 1]),  # 9
-        VertexInfo(VertexType.Driven, [8, multiple * basic, 9, (multiple - 0.999999) * basic, 1]),  # 10
+        VertexInfo(VertexType.Driven, [6, multiple * basic, 7, (0.0001 + abs(multiple - 1)) * basic, 1]),  # 8
+        VertexInfo(VertexType.Driven, [5, (0.0001 + abs(multiple - 1)) * basic, 8, basic, 0 if multiple < 1 else 1]),
+        # 9
+        VertexInfo(VertexType.Driven, [8, multiple * basic, 9, (0.0001 + abs(multiple - 1)) * basic, 1]),  # 10
 
     ]
     extra_lines = [
