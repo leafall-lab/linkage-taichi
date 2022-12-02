@@ -231,10 +231,10 @@ def Adder() -> Linkage:
         VertexInfo(VertexType.Driven, [12, adder_len, 13, adder_len, 1]),  # 14
         VertexInfo(VertexType.Driven, [5, adder_len, 14, adder_len, 1, 12]),  # 15, not equal on 12
         VertexInfo(VertexType.Driven, [14, adder_len, 11, adder_len, 1, 13]),  # 16, not equal on 13
-        VertexInfo(VertexType.Driven, [15, adder_len, 16, adder_len, 1]),  # 17
+        VertexInfo(VertexType.Driven, [15, adder_len, 16, adder_len, 1]),  # 17, x-y=0
     ]
     extra_lines = [
-        [1, 2], [6, 5], [6, 11]
+        [1, 2], [6, 5], [6, 11], [6, 17]
     ]
 
     # blue = (0.28, 0.68, 0.99)
