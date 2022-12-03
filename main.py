@@ -327,11 +327,11 @@ class LinkageBuilder:
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
-    # add origin
+    # add point
     # need: nothing
-    # return: id of origin
-    def add_origin(self, color_hint: Tuple[float, float, float] = None) -> int:
-        self.infos.extend([VertexInfo(VertexType.Fixed, [0.0, 0.0])])  # +0
+    # return: id of point
+    def add_point(self, x: float = 0.0, y: float = 0.0, color_hint: Tuple[float, float, float] = None) -> int:
+        self.infos.extend([VertexInfo(VertexType.Fixed, [x, y])])  # +0
 
         self.register_color(self.vertices() - 1, color_hint)
         return self.vertices() - 1
@@ -383,17 +383,44 @@ class LinkageBuilder:
         # print("n=", n, " o=", o, " a=", a, " b=", b)
 
         self.infos.extend([
-            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # 12 +0
-            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # 13 +1
-            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 1]),  # 14 +2
-            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # 15, not equal on 12 +3
-            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # 16, not equal on 13 +4
+            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # +0
+            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # +1
+            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 1]),  # +2
+            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # +3, not equal to +0
+            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # +4, not equal to +1
             VertexInfo(VertexType.Driven, [n + 3, basic, n + 4, basic, 1]),  # +5
         ])
 
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
+    # add a mover (constant adder)
+    # need: id of x, (dx, dy)
+    # return id of moved point
+    # TODO: refine direction hint logic of +4
+    def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+        basic = 6.4
+
+        # x0 = random.uniform(-10, 10)
+        # y0 = random.uniform(-10, 10)
+        x0 = -5
+        y0 = 6
+
+        d = math.sqrt(dx * dx + dy * dy)
+
+        self.infos.extend([
+            VertexInfo(VertexType.Fixed, [x0, y0]),  # +0
+            VertexInfo(VertexType.Fixed, [x0 + dx, y0 + dy]),  # +1
+            VertexInfo(VertexType.Driven, [x, basic, n + 0, basic, 0]),  # +2
+            VertexInfo(VertexType.Driven, [n + 1, basic, n + 2, d, 0]),  # +3
+            VertexInfo(VertexType.Driven, [n + 3, basic, x, d, 1]),  # +4
+        ])
+        self.add_extra_lines([[n + 0, n + 1]])
+
+        self.register_color(n, color_hint)
+        return self.vertices() - 1
+    
     def vertices(self):
         return len(self.infos)
 
@@ -413,7 +440,7 @@ class LinkageBuilder:
 def YEqualKx(k: float = 2.0) -> Linkage:
     builder = LinkageBuilder()
     x = builder.add_straight_line()
-    o = builder.add_origin()
+    o = builder.add_point()
     y = builder.add_axes(o, x)
     y2 = builder.add_zoomer(o, y, k)
     p = builder.add_adder(o, x, y2)
@@ -434,7 +461,14 @@ def main():
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     # linkage = eval(name + "()")
 
-    linkage = YEqualKx(0.5)
+    # linkage = YEqualKx(0.5)
+    builder = LinkageBuilder()
+    x = builder.add_straight_line()
+    o = builder.add_point()
+    builder.set_color(x, (1.0, 0.0, 0.0))
+    builder.add_extra_lines([[o, x]])
+
+    linkage = builder.get_linkage()
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
