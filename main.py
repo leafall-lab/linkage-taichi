@@ -317,7 +317,7 @@ class LinkageBuilder:
         self.infos.extend([
             VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # +0
             VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # +1
-            VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # +2
+            VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.2]),  # +2
             VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 0]),  # +3
             VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 1]),  # +4
             VertexInfo(VertexType.Driven, [n + 3, 2.0, n + 4, 2.0, 0]),  # +5, x-axis
@@ -327,10 +327,10 @@ class LinkageBuilder:
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
-    # add point
+    # add fixed point
     # need: nothing
     # return: id of point
-    def add_point(self, x: float = 0.0, y: float = 0.0, color_hint: Tuple[float, float, float] = None) -> int:
+    def add_fixed(self, x: float = 0.0, y: float = 0.0, color_hint: Tuple[float, float, float] = None) -> int:
         self.infos.extend([VertexInfo(VertexType.Fixed, [x, y])])  # +0
 
         self.register_color(self.vertices() - 1, color_hint)
@@ -420,7 +420,30 @@ class LinkageBuilder:
 
         self.register_color(n, color_hint)
         return self.vertices() - 1
-    
+
+    # add an inverter
+    # need: id of o and x
+    # return: id of inverted index `t`
+    # ot * ox = (a^2 - b^2)
+    def add_inverter(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+
+        basic = 6.4
+        tx = 6
+
+        self.infos.extend([
+            VertexInfo(VertexType.Driven, [o, basic, x, tx, 0]),  # n
+            VertexInfo(VertexType.Driven, [o, basic, x, tx, 1]),  # n+1
+            VertexInfo(VertexType.Driven, [n, tx, n + 1, tx, 0, x]),  # n+2
+        ])
+        # self.extra_lines.append([n + 1, n + 2])
+
+        self.register_color(n, color_hint)
+        return self.vertices() - 1
+
+    # add a square ox^2
+    # def add_square(self):
+
     def vertices(self):
         return len(self.infos)
 
@@ -440,7 +463,7 @@ class LinkageBuilder:
 def YEqualKx(k: float = 2.0) -> Linkage:
     builder = LinkageBuilder()
     x = builder.add_straight_line()
-    o = builder.add_point()
+    o = builder.add_fixed()
     y = builder.add_axes(o, x)
     y2 = builder.add_zoomer(o, y, k)
     p = builder.add_adder(o, x, y2)
@@ -463,10 +486,11 @@ def main():
 
     # linkage = YEqualKx(0.5)
     builder = LinkageBuilder()
+    o = builder.add_fixed()
     x = builder.add_straight_line()
-    o = builder.add_point()
-    builder.set_color(x, (1.0, 0.0, 0.0))
     builder.add_extra_lines([[o, x]])
+    p = builder.add_inverter(o, x)
+    builder.set_color(p, (1.0, 0.0, 0.0))
 
     linkage = builder.get_linkage()
 
