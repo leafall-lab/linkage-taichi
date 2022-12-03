@@ -272,7 +272,6 @@ def Multiplier(multiple: float = 0.5) -> Linkage:
         VertexInfo(VertexType.Driven, [5, (0.0001 + abs(multiple - 1)) * basic, 8, basic, 0 if multiple < 1 else 1]),
         # 9
         VertexInfo(VertexType.Driven, [8, multiple * basic, 9, (0.0001 + abs(multiple - 1)) * basic, 1]),  # 10
-
     ]
     extra_lines = [
         [1, 2]
@@ -297,15 +296,22 @@ def Multiplier(multiple: float = 0.5) -> Linkage:
 
 
 class LinkageBuilder:
-    def __init__(self):
+    def __init__(self, global_color_hint: Tuple[float, float, float] = None):
         self.infos: List[VertexInfo] = []
         self.extra_lines: List[List[int]] = []
-        self.colors: List[Tuple[float, float, float]] = None
+        self.colors: List[Tuple[float, float, float]] = []
+        self.global_color_hint = global_color_hint if global_color_hint is not None else (0.28, 0.68, 0.99)
 
-    # add a Peaucellier straight line
+    def register_color(self, old_n: int, color_hint: Tuple[float, float, float]):
+        color = color_hint if color_hint is not None else self.global_color_hint
+
+        if old_n < self.vertices():
+            self.colors.extend([color] * (self.vertices() - old_n))
+
+    # add Peaucellier straight line
     # need: nothing
     # return: id of x
-    def add_straight_line(self) -> int:
+    def add_straight_line(self, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
 
         self.infos.extend([
@@ -318,16 +324,22 @@ class LinkageBuilder:
         ])
         self.extra_lines.append([n + 1, n + 2])
 
+        self.register_color(n, color_hint)
         return self.vertices() - 1
 
-    def add_origin(self) -> int:
+    # add origin
+    # need: nothing
+    # return: id of origin
+    def add_origin(self, color_hint: Tuple[float, float, float] = None) -> int:
         self.infos.extend([VertexInfo(VertexType.Fixed, [0.0, 0.0])])  # +0
+
+        self.register_color(self.vertices() - 1, color_hint)
         return self.vertices() - 1
 
     # add axes from straight line
     # need: id of origin and x
     # return: id of y
-    def add_axes(self, o: int, x: int) -> int:
+    def add_axes(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
 
         basic = 3.2
@@ -340,6 +352,46 @@ class LinkageBuilder:
             VertexInfo(VertexType.Driven, [n + 2, basic, n + 3, basic, 1]),  # +4, y-axis
         ])
 
+        self.register_color(n, color_hint)
+        return self.vertices() - 1
+
+    # add zoomer (constant multiplier)
+    # need: id of origin, zoomee, multiple
+    # return: id of result
+    def add_zoomer(self, o: int, x: int, multi: float = 2, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+        basic = 3.2
+
+        shorter = (0.0001 + abs(multi - 1)) * basic
+
+        self.infos.extend([
+            VertexInfo(VertexType.Driven, [x, basic, o, basic, 1]),  # +0
+            VertexInfo(VertexType.Driven, [o, multi * basic, n + 0, shorter, 1]),  # +1
+            VertexInfo(VertexType.Driven, [x, shorter, n + 1, basic, 0 if multi < 1 else 1]),  # +2
+            VertexInfo(VertexType.Driven, [n + 1, multi * basic, n + 2, shorter, 1]),  # +3
+        ])
+
+        self.register_color(n, color_hint)
+        return self.vertices() - 1
+
+    # add vector adder
+    # need: id of origin, op1, op2
+    # return id of op1+op2
+    def add_adder(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+        basic = 6.4
+        # print("n=", n, " o=", o, " a=", a, " b=", b)
+
+        self.infos.extend([
+            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # 12 +0
+            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # 13 +1
+            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 1]),  # 14 +2
+            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # 15, not equal on 12 +3
+            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # 16, not equal on 13 +4
+            VertexInfo(VertexType.Driven, [n + 3, basic, n + 4, basic, 1]),  # +5
+        ])
+
+        self.register_color(n, color_hint)
         return self.vertices() - 1
 
     def vertices(self):
@@ -347,6 +399,29 @@ class LinkageBuilder:
 
     def get_linkage(self):
         return Linkage(self.infos, self.extra_lines, self.colors)
+
+    # set p as the traced point (config it's color), and return the linkage
+    def set_color(self, p: int, color: Tuple[float, float, float]):
+        print("set_color", p, color)
+        print("self.colors", len(self.colors))
+        self.colors[p] = color
+
+    def add_extra_lines(self, lines: List[List[int]]):
+        self.extra_lines.extend(lines)
+
+
+def YEqualKx(k: float = 2.0) -> Linkage:
+    builder = LinkageBuilder()
+    x = builder.add_straight_line()
+    o = builder.add_origin()
+    y = builder.add_axes(o, x)
+    y2 = builder.add_zoomer(o, y, k)
+    p = builder.add_adder(o, x, y2)
+
+    builder.set_color(p, (1.0, 0.0, 0.0))
+    builder.add_extra_lines([[o, x], [o, y], [o, p]])
+
+    return builder.get_linkage()
 
 
 def main():
@@ -359,12 +434,7 @@ def main():
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     # linkage = eval(name + "()")
 
-    builder = LinkageBuilder()
-    x = builder.add_straight_line()
-    o = builder.add_origin()
-    y = builder.add_axes(o, x)
-    
-    linkage = builder.get_linkage()
+    linkage = YEqualKx(0.5)
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
@@ -373,7 +443,7 @@ def main():
     canvas = window.get_canvas()
     scene = ti.ui.Scene()
     camera = ti.ui.Camera()
-    camera.position(0, 0, 20)
+    camera.position(0, 0, 30)
     camera.lookat(0, 0, 0)
 
     current_t = 0.0
