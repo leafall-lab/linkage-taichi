@@ -6,10 +6,18 @@ import taichi as ti
 
 ti.init(arch=ti.cuda)
 res = 768
-strong = res * 0.001
-black = ti.math.vec3(0, 0, 0)
-white = ti.math.vec3(1, 1, 1)
+strong = res*0.001
+black = ti.math.vec3(0,0,0)
+white = ti.math.vec3(1,1,1) 
+red = ti.math.vec3(1,0,0)
+green = ti.math.vec3(ti.hex_to_rgb(0x81B29A))
+blue = ti.math.vec3(ti.hex_to_rgb(0x8198B2))
+yellow = ti.math.vec3(ti.hex_to_rgb(0xF2CC8F))
+
+
+
 pixels = ti.Vector.field(3, dtype=ti.f32, shape=(res, res))
+trackList = ti.Vector.field(2, dtype=ti.f32, shape=1000)
 
 
 @enum.unique
@@ -50,10 +58,12 @@ class VertexInfo:
 
 class Linkage:
     def __init__(self, vertex_infos: List[VertexInfo], lines: List[List[int]] = None,
-                 colors: List[Tuple[float, float, float]] = None):
+                 colors: List[Tuple[float, float, float]] = None, tracked: List[int] = None, driver: int = -1):
         self.N: int = len(vertex_infos)
         self.vertex_infos = vertex_infos
         self.vertices = ti.Vector.field(3, dtype=ti.f32, shape=self.N)
+        self.driver = driver
+        self.trackedNum = 0
 
         lines = lines or []
         for i in range(self.N):
@@ -68,6 +78,12 @@ class Linkage:
             self.colors = ti.Vector.field(3, dtype=ti.f32, shape=len(colors))
             for i in range(len(colors)):
                 self.colors[i] = colors[i]
+
+        if tracked is not None:
+            self.trackedNum = len(tracked)
+            self.tracked = ti.Vector.field(1, dtype=ti.u8, shape=self.N)
+            for i in range(len(tracked)):
+                self.tracked[tracked[i]][0] = 1
 
     # needn't topo sort, we assume that small-id vertex is never rely on large-id vertex
     def substep(self, step: int):
@@ -104,6 +120,16 @@ class Linkage:
 
     def get_even_n(self):
         return (self.N - 1) // 2 * 2
+    
+    def get_istracked(self):
+        return self.tracked
+    
+    def get_trackedNum(self):
+        return self.trackedNum
+    
+    def get_driver(self):
+        return self.driver
+
 
 
 def intersect_of_circle(x1, y1, r1, x2, y2, r2):
@@ -134,7 +160,7 @@ def linkage0() -> Linkage:
         VertexInfo(VertexType.Driver, [0, 0, 5, 0, math.pi * 2]),
     ]
     extra_lines = [[0, 1]]
-    return Linkage(info, extra_lines)
+    return Linkage(info, extra_lines, None, None, 1)
 
 
 def linkage1() -> Linkage:
@@ -143,7 +169,7 @@ def linkage1() -> Linkage:
         VertexInfo(VertexType.Driver, [0, 0, 5, 0, math.pi * 2]),
         VertexInfo(VertexType.Driven, [0, 3.5, 1, 3.5, 0]),
     ]
-    return Linkage(info)
+    return Linkage(info, None, None, [2], 1)
 
 
 def GrashofFourBarLinkage(radius: float = 1.0) -> Linkage:
@@ -154,7 +180,7 @@ def GrashofFourBarLinkage(radius: float = 1.0) -> Linkage:
         VertexInfo(VertexType.Driven, [1, 7.0, 2, 6.0, 1]),
     ]
     extra_lines = [[0, 1], [0, 2]]
-    return Linkage(info, extra_lines)
+    return Linkage(info, extra_lines, None, [3], 2)
 
 
 def PeaucellierStraightLinkage() -> Linkage:
@@ -169,7 +195,7 @@ def PeaucellierStraightLinkage() -> Linkage:
     extra_lines = [
         [1, 2]
     ]
-    return Linkage(info, extra_lines)
+    return Linkage(info, extra_lines, None, [5], 2)
 
 
 def Axes() -> Linkage:
@@ -208,7 +234,7 @@ def Axes() -> Linkage:
         red,
     ]
 
-    return Linkage(info, extra_lines, colors)
+    return Linkage(info, extra_lines, colors, [5,11], 2)
 
 
 def Adder() -> Linkage:
@@ -258,7 +284,7 @@ def Adder() -> Linkage:
         yellow, yellow, yellow, yellow, yellow, red
     ]
 
-    return Linkage(info, extra_lines, colors)
+    return Linkage(info, extra_lines, colors, [5,11,17], 2)
 
 
 def Multiplier(multiple: float = 0.5) -> Linkage:
@@ -283,6 +309,7 @@ def Multiplier(multiple: float = 0.5) -> Linkage:
     extra_lines = [
         [1, 2]
     ]
+    driver = 2
 
     # blue = (0.28, 0.68, 0.99)
     # green = (0.68, 0.99, 0.28)
@@ -299,7 +326,7 @@ def Multiplier(multiple: float = 0.5) -> Linkage:
     #     # yellow, yellow, yellow, yellow, yellow, red
     # ]
 
-    return Linkage(info, extra_lines)
+    return Linkage(info, extra_lines, None, [5, 10], 2)
 
 
 class LinkageBuilder:
@@ -308,6 +335,8 @@ class LinkageBuilder:
         self.extra_lines: List[List[int]] = []
         self.colors: List[Tuple[float, float, float]] = []
         self.global_color_hint = global_color_hint if global_color_hint is not None else (0.28, 0.68, 0.99)
+        self.tracked = []
+        self.driver = -1
 
     def register_color(self, old_n: int, color_hint: Tuple[float, float, float]):
         color = color_hint if color_hint is not None else self.global_color_hint
@@ -330,6 +359,7 @@ class LinkageBuilder:
             VertexInfo(VertexType.Driven, [n + 3, 2.0, n + 4, 2.0, 0]),  # +5, x-axis
         ])
         self.extra_lines.append([n + 1, n + 2])
+        self.driver = n + 2
 
         self.register_color(n, color_hint)
         return self.vertices() - 1
@@ -405,7 +435,7 @@ class LinkageBuilder:
         return len(self.infos)
 
     def get_linkage(self):
-        return Linkage(self.infos, self.extra_lines, self.colors)
+        return Linkage(self.infos, self.extra_lines, self.colors, self.tracked, self.driver)
 
     # set p as the traced point (config it's color), and return the linkage
     def set_color(self, p: int, color: Tuple[float, float, float]):
@@ -416,6 +446,9 @@ class LinkageBuilder:
     def add_extra_lines(self, lines: List[List[int]]):
         self.extra_lines.extend(lines)
 
+    def track(self, points:List[int]):
+        self.tracked.extend(points)
+
 
 def YEqualKx(k: float = 2.0) -> Linkage:
     builder = LinkageBuilder()
@@ -425,27 +458,27 @@ def YEqualKx(k: float = 2.0) -> Linkage:
     y2 = builder.add_zoomer(o, y, k)
     p = builder.add_adder(o, x, y2)
 
-    builder.set_color(p, (1.0, 0.0, 0.0))
+    # builder.set_color(p, (1.0, 0.0, 0.0))
+    builder.track([p])
     builder.add_extra_lines([[o, x], [o, y], [o, p]])
 
     return builder.get_linkage()
 
 
-call_time = ti.field(ti.i32, shape=1)
-
 
 @ti.func
-def paint_line_point(pos: ti.math.vec2, radius: ti.f32, strength: ti.f32):
+def paint_line_point(pos: ti.math.vec2, radius: ti.f32, strength: ti.f32, color: ti.math.vec3):
     # call_time[0] += 1
     for x in range(int(ti.math.floor(pos.x - radius)), int(ti.math.ceil(pos.x + radius))):
         for y in range(int(ti.math.floor(pos.y - radius)), int(ti.math.ceil(pos.y + radius))):
-            call_time[0] += 1
-            pixels[x, y] += strength
+            # call_time[0] += 1
+            pixels[x, y] += strength*color
             pass
 
 
-@ti.kernel
-def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.f32):
+
+@ti.func
+def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.f32, strength: ti.f32, color: ti.math.vec3, isTrack: ti.u8):
     radius = size
     distCursor = ti.math.distance(cursor, pos)
     if (distCursor <= zone):
@@ -455,50 +488,79 @@ def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.
         for y in range(int(ti.math.floor(pos.y - zone)), int(ti.math.ceil(pos.y + zone))):
             pixel = ti.math.vec2(x, y)
             dist = ti.math.distance(pixel, pos)
-            pixels[x, y] = white - (white - pixels[x, y]) * (1 - ti.math.pow(radius - 0.001, dist / strong))
+
+            rgb = (1-ti.math.pow(radius-0.001, dist/strong)*(strength*2)*color)
+            pixels[x,y] = white - (white - pixels[x,y])*rgb
+            # pixels[x,y] += (1-rgb)
 
             # pixels[x,y] = ti.math.vec3(1,1,1)*(1-ti.math.pow(radius-0.001, dist/strong))
             # pixels[x,y] *= (1-ti.math.pow(radius-0.001, dist/strong))
 
 
 @ti.kernel
+def create_points(vertices: ti.template(), cursor: ti.math.vec2, tracked: ti.template(),driver: ti.i32):
+    for n in range(vertices.shape[0]):
+        pos = trans_pos(vertices[n].xy)
+        if (n == driver):
+            paint_point(pos=pos, size=0.9, cursor=cursor, zone=30., strength=.5, color=red, isTrack = 0)
+        if (tracked[n][0] != 0):
+            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=1., color=yellow, isTrack = 1)
+        else:
+            paint_point(pos=pos, size=0.5, cursor=cursor, zone=30., strength=.5, color=blue, isTrack = 0)
+
+@ti.kernel
 def paint_bg(color: ti.math.vec3):
     for x, y in pixels:
         rgb = color
-        pixels[x, y] = rgb
+        pixels[x,y] = rgb
+        # pixels[x,y] *= 0.9
+        # pixels[x,y] -= 0.01 - pixels[x,y]*0.01
+        # pixels[x,y] -= pixels[x,y]/100
 
 
-# @ti.func
-# def create_line(pointA: ti.template(), pointA: ti.template(), width: float, strength: float):
-#     # linePoints = ti.Vector.field(2, dtype=ti.f32, shape=n)
-#     call_time[0] += 1
-#     # for i in range(int(n)):
-#     #     posX = pointA[0] + unitX * i
-#     #     posY = pointA[1] + unitY * i
-#     #     linePoints[i] = (posX, posY)
-#     #     call_time[0] += 1
-#
-#     # paint_line_point(pos=linePoints[i], radius=width, strength=strength)
+@ti.func
+def trans_pos(pos: ti.math.vec2) -> ti.math.vec2:
+    position = (pos+(10,10))*30
+    return position
 
 
 @ti.kernel
 def ish_paint_line(vertices: ti.template(), indices: ti.template()):
     for i in range(indices.shape[0]):
-        pointA = (vertices[indices[i][0]].xy + (30, 30)) * 15
-        pointB = (vertices[indices[i][1]].xy + (30, 30)) * 15
+        pointA = trans_pos(vertices[indices[i][0]].xy)
+        pointB = trans_pos(vertices[indices[i][1]].xy)
         n = (abs(pointB[0] - pointA[0]) + abs(pointB[1] - pointA[1]))
         n = ti.math.floor(n) + 1
         width = 0.2
-        strength = 0.2
+        strength = 0.1
         unitX = (pointB[0] - pointA[0]) / n
         unitY = (pointB[1] - pointA[1]) / n
 
         for j in range(int(n)):
             posX = pointA[0] + unitX * j
             posY = pointA[1] + unitY * j
-            paint_line_point(ti.math.vec2(posX, posY), radius=width, strength=strength)
+            paint_line_point(ti.math.vec2(posX, posY), radius=width, strength=strength, color=green)
             # paint_line_point(pos=(posX, posY), radius=width, strength=strength)
 
+
+
+@ti.kernel
+def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2):
+    for n in ti.grouped(trackedPoints):
+        pos = trans_pos(trackedPoints[n])
+        if (ti.math.floor(step/145)%2 == 0)
+            
+        size = (1-(abs((step%145)-n[1]))/144)*0.4
+        paint_point(pos=pos, size=size, cursor=cursor, zone=30., strength=.2, color=yellow, isTrack = 0)
+
+
+@ti.kernel
+def get_tracked_points(vertices: ti.template(), isTracked: ti.template(), trackedPoints: ti.template(), steps: ti.i32):
+    i = 0
+    for n in isTracked:
+        if isTracked[n][0] != 0:
+            trackedPoints[i,steps] = vertices[n].xy
+            i += 1
 
 def main():
     dt = 0.01  # <= 0.01, 0.01 is slowest.
@@ -525,12 +587,24 @@ def main():
 
     step_diff = 1
 
-    while window.running:
-        for i in range(substeps):
-            linkage.substep(steps)
-            steps += step_diff
 
-            current_t += dt
+    trackedPoints = ti.Vector.field(2, dtype=ti.f32, shape=(linkage.get_trackedNum(), 145))
+
+    while window.running:
+        linkage.substep(steps)
+        vertices = linkage.get_vertices()
+        indices = linkage.get_indices()
+        isTracked = linkage.get_istracked()
+        cursor = ti.math.vec2(window.get_cursor_pos()) * res
+        
+        if (steps < 145):
+            get_tracked_points(vertices, isTracked, trackedPoints, steps)
+        
+        # print(trackedPoints)
+        
+        steps += step_diff
+
+        current_t += dt
         # print(linkage.get_vertices())
 
         if window.get_event(ti.ui.PRESS):
@@ -544,29 +618,27 @@ def main():
 
         paint_bg(color=black)
 
-        vertices = linkage.get_vertices()
-        indices = linkage.get_indices()
-        cursor = ti.math.vec2(window.get_cursor_pos()) * res
+        
 
-        for n in range(vertices.shape[0]):
-            pos = (vertices[n].xy + (30, 30)) * 15
-            paint_point(pos=pos, size=0.7, cursor=cursor, zone=30)
+
+        driver = linkage.get_driver()
+        
+        
+
+        
+
+        create_points(vertices, cursor, isTracked, driver)
+
+        # paint_track(vertices, isTracked)
+
         ish_paint_line(vertices, indices)
-        # for i in range(indices.shape[0]):
-        #     posA = (vertices[indices[i][0]].xy + (30, 30)) * 15
-        #     posB = (vertices[indices[i][1]].xy + (30, 30)) * 15
-        #     # create_line(posA, posB, width=0.2, strength=0.2)
-
-        scene.particles(linkage.get_vertices(), color=(0.68, 0.26, 0.19), radius=0.1)
-        scene.lines(linkage.get_vertices(), indices=linkage.get_indices(), color=(0.28, 0.68, 0.99), width=5.0,
-                    vertex_count=linkage.get_even_n(), per_vertex_color=linkage.get_colors())
-
-        # canvas.scene(scene)
+        paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
+        
         canvas.set_image(pixels)
         # video_manager.write_frame(window.get_image_buffer_as_numpy())
 
         window.show()
-        print("call_time = ", call_time[0])
+        # print("call_time = ", call_time[0])
 
         # sleep(200)
     # video_manager.rmake_video(gif=True, mp4=False)
