@@ -1,9 +1,15 @@
 import enum
 import math
-import random
 from typing import List, Tuple
 
 import taichi as ti
+
+ti.init(arch=ti.cuda)
+res = 768
+strong = res * 0.001
+black = ti.math.vec3(0, 0, 0)
+white = ti.math.vec3(1, 1, 1)
+pixels = ti.Vector.field(3, dtype=ti.f32, shape=(res, res))
 
 
 @enum.unique
@@ -24,7 +30,8 @@ class VertexInfo:
             for Fixed vertex, param contains position [x, y]
             for Driver vertex, param contains center of circle, radius, initial angle, max angle  [x0, y0, r, theta0, theta1]
             for Driven vertex, param contains double (vertex id, radius) and a direction hint(0/1)
-                [id1, r1, id2, r2, hint, [anti-hint-vertex]], anti-hint (if exist) means node/id1/id2/anti-hint should form a parallelogram
+                [id1, r1, id2, r2, hint, [anti-hint-vertex]], anti-hint means the node's position should not equal on anti-hint-vertex
+                this is more priority than "hint"
 
         Example::
             Vertex(VertexType.Fixed, [0, 0])
@@ -78,14 +85,13 @@ class Linkage:
                 id1, r1, id2, r2, hint = info.param[:5]
                 x1, y1 = self.vertices[id1][0], self.vertices[id1][1]
                 x2, y2 = self.vertices[id2][0], self.vertices[id2][1]
-                x3, y3 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[hint]
-                if len(info.param) == 6:  # if can't form a Parallelogram, use the other intersection
+                x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[hint]
+                if len(info.param) == 6:
                     anti_hint = info.param[5]
-                    x0, y0 = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
-                    if abs((y1 - y0) * (x3 - x2) - (y3 - y2) * (x1 - x0)) > 1e-2:
-                        info.param[4] = 1 - info.param[4]
-                        x3, y3 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
-                self.vertices[i] = [x3, y3, 0]
+                    xh, yh = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
+                    if x0 - xh < 1e-5 and y0 - yh < 1e-5:
+                        x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
+                self.vertices[i] = [x0, y0, 0]
 
     def get_vertices(self):
         return self.vertices
@@ -318,7 +324,7 @@ class LinkageBuilder:
         self.infos.extend([
             VertexInfo(VertexType.Fixed, [3.0, -7.5]),  # +0
             VertexInfo(VertexType.Fixed, [3.0, -4.5]),  # +1
-            VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.2]),  # +2
+            VertexInfo(VertexType.Driver, [3.0, -4.5, 3.0, 0.8, 2.25]),  # +2
             VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 0]),  # +3
             VertexInfo(VertexType.Driven, [n, 7.0, n + 2, 2.0, 1]),  # +4
             VertexInfo(VertexType.Driven, [n + 3, 2.0, n + 4, 2.0, 0]),  # +5, x-axis
@@ -328,11 +334,11 @@ class LinkageBuilder:
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
-    # add fixed point
+    # add origin
     # need: nothing
-    # return: id of point
-    def add_fixed(self, x: float = 0.0, y: float = 0.0, color_hint: Tuple[float, float, float] = None) -> int:
-        self.infos.extend([VertexInfo(VertexType.Fixed, [x, y])])  # +0
+    # return: id of origin
+    def add_origin(self, color_hint: Tuple[float, float, float] = None) -> int:
+        self.infos.extend([VertexInfo(VertexType.Fixed, [0.0, 0.0])])  # +0
 
         self.register_color(self.vertices() - 1, color_hint)
         return self.vertices() - 1
@@ -384,88 +390,15 @@ class LinkageBuilder:
         # print("n=", n, " o=", o, " a=", a, " b=", b)
 
         self.infos.extend([
-            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # +0
-            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # +1
-            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 1]),  # +2
-            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # +3, not equal to +0
-            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # +4, not equal to +1
+            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # 12 +0
+            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # 13 +1
+            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 1]),  # 14 +2
+            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # 15, not equal on 12 +3
+            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # 16, not equal on 13 +4
             VertexInfo(VertexType.Driven, [n + 3, basic, n + 4, basic, 1]),  # +5
         ])
 
         self.register_color(n, color_hint)
-        return self.vertices() - 1
-
-    # oa - ob = ba, and need move its start point to o, so we need to cal `bo + ba`.
-    def add_suber(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
-        n: int = self.vertices()
-        self.add_adder(b, o, a)
-        self.register_color(n, color_hint)
-        return self.vertices() - 1
-
-    # add a mover (constant adder)
-    # need: id of x, (dx, dy)
-    # return id of moved point
-    # TODO: refine direction hint logic of +4
-    def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
-        n: int = self.vertices()
-        basic = 12.8
-
-        x0 = random.uniform(-5, 5)
-        y0 = random.uniform(-5, 5)
-        # x0 = -5
-        # y0 = 6
-
-        d = math.sqrt(dx * dx + dy * dy)
-
-        self.infos.extend([
-            VertexInfo(VertexType.Fixed, [x0, y0]),  # +0
-            VertexInfo(VertexType.Fixed, [x0 + dx, y0 + dy]),  # +1
-            VertexInfo(VertexType.Driven, [x, basic, n + 0, basic, 0]),  # +2
-            VertexInfo(VertexType.Driven, [n + 1, basic, n + 2, d, 0, n + 0]),  # +3
-            VertexInfo(VertexType.Driven, [n + 3, basic, x, d, 1, n + 2]),  # +4
-        ])
-        self.add_extra_lines([[n + 0, n + 1]])
-
-        self.register_color(n, color_hint)
-        return self.vertices() - 1
-
-    # add an inverter
-    # need: id of o and x
-    # return: id of inverted index `t`
-    # ot * ox = (a^2 - b^2)
-    def add_inverter(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
-        n: int = self.vertices()
-
-        basic = 6.4
-        tx = 6
-
-        self.infos.extend([
-            VertexInfo(VertexType.Driven, [o, basic, x, tx, 0]),  # n
-            VertexInfo(VertexType.Driven, [o, basic, x, tx, 1]),  # n+1
-            VertexInfo(VertexType.Driven, [n, tx, n + 1, tx, 0, x]),  # n+2
-        ])
-        # self.extra_lines.append([n + 1, n + 2])
-
-        self.register_color(n, color_hint)
-        return self.vertices() - 1
-
-    # add a squarer
-    # need: id or o and x
-    # return: id of squared point `t`
-    # ot = ox^2
-    def add_squarer(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
-        n: int = self.vertices()
-
-        # psub1 = self.add_mover(x, -1, 0)
-        padd1 = self.add_mover(x, 1, 0)
-        #
-        # inv_sub = self.add_inverter(o, psub1)
-        # inv_add = self.add_inverter(o, padd1)
-        # subed = self.add_suber(o, inv_sub, inv_add)
-        #
-        # inved = self.add_inverter(o, subed)
-
-        # self.register_color(n, color_hint)
         return self.vertices() - 1
 
     def vertices(self):
@@ -487,7 +420,7 @@ class LinkageBuilder:
 def YEqualKx(k: float = 2.0) -> Linkage:
     builder = LinkageBuilder()
     x = builder.add_straight_line()
-    o = builder.add_fixed()
+    o = builder.add_origin()
     y = builder.add_axes(o, x)
     y2 = builder.add_zoomer(o, y, k)
     p = builder.add_adder(o, x, y2)
@@ -498,23 +431,76 @@ def YEqualKx(k: float = 2.0) -> Linkage:
     return builder.get_linkage()
 
 
-def Mover() -> Linkage:
-    builder = LinkageBuilder()
-    o = builder.add_fixed()
-    x = builder.add_straight_line()
-    y = builder.add_mover(x, 1, 0)
-    y = builder.add_mover(y, -1, 0)
-    y = builder.add_mover(y, 3, 4)
-    y = builder.add_mover(y, -2, 3)
-    y = builder.add_mover(y, 5, -4)
-    y = builder.add_mover(y, -7, -9)
-    builder.set_color(y, (1.0, 0.0, 0.0))
-    return builder.get_linkage()
+call_time = ti.field(ti.i32, shape=1)
+
+
+@ti.func
+def paint_line_point(pos: ti.math.vec2, radius: ti.f32, strength: ti.f32):
+    # call_time[0] += 1
+    for x in range(int(ti.math.floor(pos.x - radius)), int(ti.math.ceil(pos.x + radius))):
+        for y in range(int(ti.math.floor(pos.y - radius)), int(ti.math.ceil(pos.y + radius))):
+            call_time[0] += 1
+            pixels[x, y] += strength
+            pass
+
+
+@ti.kernel
+def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.f32):
+    radius = size
+    distCursor = ti.math.distance(cursor, pos)
+    if (distCursor <= zone):
+        radius += (1 - distCursor / zone) * (0.9 - radius)
+
+    for x in range(int(ti.math.floor(pos.x - zone)), int(ti.math.ceil(pos.x + zone))):
+        for y in range(int(ti.math.floor(pos.y - zone)), int(ti.math.ceil(pos.y + zone))):
+            pixel = ti.math.vec2(x, y)
+            dist = ti.math.distance(pixel, pos)
+            pixels[x, y] = white - (white - pixels[x, y]) * (1 - ti.math.pow(radius - 0.001, dist / strong))
+
+            # pixels[x,y] = ti.math.vec3(1,1,1)*(1-ti.math.pow(radius-0.001, dist/strong))
+            # pixels[x,y] *= (1-ti.math.pow(radius-0.001, dist/strong))
+
+
+@ti.kernel
+def paint_bg(color: ti.math.vec3):
+    for x, y in pixels:
+        rgb = color
+        pixels[x, y] = rgb
+
+
+# @ti.func
+# def create_line(pointA: ti.template(), pointA: ti.template(), width: float, strength: float):
+#     # linePoints = ti.Vector.field(2, dtype=ti.f32, shape=n)
+#     call_time[0] += 1
+#     # for i in range(int(n)):
+#     #     posX = pointA[0] + unitX * i
+#     #     posY = pointA[1] + unitY * i
+#     #     linePoints[i] = (posX, posY)
+#     #     call_time[0] += 1
+#
+#     # paint_line_point(pos=linePoints[i], radius=width, strength=strength)
+
+
+@ti.kernel
+def ish_paint_line(vertices: ti.template(), indices: ti.template()):
+    for i in range(indices.shape[0]):
+        pointA = (vertices[indices[i][0]].xy + (30, 30)) * 15
+        pointB = (vertices[indices[i][1]].xy + (30, 30)) * 15
+        n = (abs(pointB[0] - pointA[0]) + abs(pointB[1] - pointA[1]))
+        n = ti.math.floor(n) + 1
+        width = 0.2
+        strength = 0.2
+        unitX = (pointB[0] - pointA[0]) / n
+        unitY = (pointB[1] - pointA[1]) / n
+
+        for j in range(int(n)):
+            posX = pointA[0] + unitX * j
+            posY = pointA[1] + unitY * j
+            paint_line_point(ti.math.vec2(posX, posY), radius=width, strength=strength)
+            # paint_line_point(pos=(posX, posY), radius=width, strength=strength)
 
 
 def main():
-    ti.init(arch=ti.cuda)
-
     dt = 0.01  # <= 0.01, 0.01 is slowest.
     substeps = int(1 / 100 // dt)
 
@@ -523,13 +509,6 @@ def main():
     # linkage = eval(name + "()")
 
     linkage = YEqualKx(0.5)
-
-    # p = builder.add_inverter(o, x)
-    # p = builder.add_squarer(o, x)
-
-    linkage = Mover()
-
-    # linkage = Adder()
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
@@ -546,7 +525,7 @@ def main():
 
     step_diff = 1
 
-    while True:
+    while window.running:
         for i in range(substeps):
             linkage.substep(steps)
             steps += step_diff
@@ -563,16 +542,34 @@ def main():
         scene.ambient_light((0.8, 0.8, 0.8))
         scene.point_light(pos=(0, 0, 20), color=(1, 1, 1))
 
+        paint_bg(color=black)
+
+        vertices = linkage.get_vertices()
+        indices = linkage.get_indices()
+        cursor = ti.math.vec2(window.get_cursor_pos()) * res
+
+        for n in range(vertices.shape[0]):
+            pos = (vertices[n].xy + (30, 30)) * 15
+            paint_point(pos=pos, size=0.7, cursor=cursor, zone=30)
+        ish_paint_line(vertices, indices)
+        # for i in range(indices.shape[0]):
+        #     posA = (vertices[indices[i][0]].xy + (30, 30)) * 15
+        #     posB = (vertices[indices[i][1]].xy + (30, 30)) * 15
+        #     # create_line(posA, posB, width=0.2, strength=0.2)
+
         scene.particles(linkage.get_vertices(), color=(0.68, 0.26, 0.19), radius=0.1)
         scene.lines(linkage.get_vertices(), indices=linkage.get_indices(), color=(0.28, 0.68, 0.99), width=5.0,
                     vertex_count=linkage.get_even_n(), per_vertex_color=linkage.get_colors())
 
-        canvas.scene(scene)
+        # canvas.scene(scene)
+        canvas.set_image(pixels)
         # video_manager.write_frame(window.get_image_buffer_as_numpy())
 
         window.show()
+        print("call_time = ", call_time[0])
 
-    # video_manager.make_video(gif=True, mp4=False)
+        # sleep(200)
+    # video_manager.rmake_video(gif=True, mp4=False)
 
 
 if __name__ == '__main__':
