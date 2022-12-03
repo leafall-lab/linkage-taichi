@@ -1,5 +1,6 @@
 import enum
 import math
+import random
 from typing import List, Tuple
 
 import taichi as ti
@@ -23,8 +24,7 @@ class VertexInfo:
             for Fixed vertex, param contains position [x, y]
             for Driver vertex, param contains center of circle, radius, initial angle, max angle  [x0, y0, r, theta0, theta1]
             for Driven vertex, param contains double (vertex id, radius) and a direction hint(0/1)
-                [id1, r1, id2, r2, hint, [anti-hint-vertex]], anti-hint means the node's position should not equal on anti-hint-vertex
-                this is more priority than "hint"
+                [id1, r1, id2, r2, hint, [anti-hint-vertex]], anti-hint (if exist) means node/id1/id2/anti-hint should form a parallelogram
 
         Example::
             Vertex(VertexType.Fixed, [0, 0])
@@ -78,13 +78,14 @@ class Linkage:
                 id1, r1, id2, r2, hint = info.param[:5]
                 x1, y1 = self.vertices[id1][0], self.vertices[id1][1]
                 x2, y2 = self.vertices[id2][0], self.vertices[id2][1]
-                x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[hint]
-                if len(info.param) == 6:
+                x3, y3 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[hint]
+                if len(info.param) == 6:  # if can't form a Parallelogram, use the other intersection
                     anti_hint = info.param[5]
-                    xh, yh = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
-                    if x0 - xh < 1e-5 and y0 - yh < 1e-5:
-                        x0, y0 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
-                self.vertices[i] = [x0, y0, 0]
+                    x0, y0 = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
+                    if abs((y1 - y0) * (x3 - x2) - (y3 - y2) * (x1 - x0)) > 1e-2:
+                        info.param[4] = 1 - info.param[4]
+                        x3, y3 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
+                self.vertices[i] = [x3, y3, 0]
 
     def get_vertices(self):
         return self.vertices
@@ -394,18 +395,25 @@ class LinkageBuilder:
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
+    # oa - ob = ba, and need move its start point to o, so we need to cal `bo + ba`.
+    def add_suber(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+        self.add_adder(b, o, a)
+        self.register_color(n, color_hint)
+        return self.vertices() - 1
+
     # add a mover (constant adder)
     # need: id of x, (dx, dy)
     # return id of moved point
     # TODO: refine direction hint logic of +4
     def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 6.4
+        basic = 12.8
 
-        # x0 = random.uniform(-10, 10)
-        # y0 = random.uniform(-10, 10)
-        x0 = -5
-        y0 = 6
+        x0 = random.uniform(-5, 5)
+        y0 = random.uniform(-5, 5)
+        # x0 = -5
+        # y0 = 6
 
         d = math.sqrt(dx * dx + dy * dy)
 
@@ -413,8 +421,8 @@ class LinkageBuilder:
             VertexInfo(VertexType.Fixed, [x0, y0]),  # +0
             VertexInfo(VertexType.Fixed, [x0 + dx, y0 + dy]),  # +1
             VertexInfo(VertexType.Driven, [x, basic, n + 0, basic, 0]),  # +2
-            VertexInfo(VertexType.Driven, [n + 1, basic, n + 2, d, 0]),  # +3
-            VertexInfo(VertexType.Driven, [n + 3, basic, x, d, 1]),  # +4
+            VertexInfo(VertexType.Driven, [n + 1, basic, n + 2, d, 0, n + 0]),  # +3
+            VertexInfo(VertexType.Driven, [n + 3, basic, x, d, 1, n + 2]),  # +4
         ])
         self.add_extra_lines([[n + 0, n + 1]])
 
@@ -441,8 +449,24 @@ class LinkageBuilder:
         self.register_color(n, color_hint)
         return self.vertices() - 1
 
-    # add a square ox^2
-    # def add_square(self):
+    # add a squarer
+    # need: id or o and x
+    # return: id of squared point `t`
+    # ot = ox^2
+    def add_squarer(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
+        n: int = self.vertices()
+
+        # psub1 = self.add_mover(x, -1, 0)
+        padd1 = self.add_mover(x, 1, 0)
+        #
+        # inv_sub = self.add_inverter(o, psub1)
+        # inv_add = self.add_inverter(o, padd1)
+        # subed = self.add_suber(o, inv_sub, inv_add)
+        #
+        # inved = self.add_inverter(o, subed)
+
+        # self.register_color(n, color_hint)
+        return self.vertices() - 1
 
     def vertices(self):
         return len(self.infos)
@@ -474,6 +498,20 @@ def YEqualKx(k: float = 2.0) -> Linkage:
     return builder.get_linkage()
 
 
+def Mover() -> Linkage:
+    builder = LinkageBuilder()
+    o = builder.add_fixed()
+    x = builder.add_straight_line()
+    y = builder.add_mover(x, 1, 0)
+    y = builder.add_mover(y, -1, 0)
+    y = builder.add_mover(y, 3, 4)
+    y = builder.add_mover(y, -2, 3)
+    y = builder.add_mover(y, 5, -4)
+    y = builder.add_mover(y, -7, -9)
+    builder.set_color(y, (1.0, 0.0, 0.0))
+    return builder.get_linkage()
+
+
 def main():
     ti.init(arch=ti.cuda)
 
@@ -484,15 +522,14 @@ def main():
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     # linkage = eval(name + "()")
 
-    # linkage = YEqualKx(0.5)
-    builder = LinkageBuilder()
-    o = builder.add_fixed()
-    x = builder.add_straight_line()
-    builder.add_extra_lines([[o, x]])
-    p = builder.add_inverter(o, x)
-    builder.set_color(p, (1.0, 0.0, 0.0))
+    linkage = YEqualKx(0.5)
 
-    linkage = builder.get_linkage()
+    # p = builder.add_inverter(o, x)
+    # p = builder.add_squarer(o, x)
+
+    linkage = Mover()
+
+    # linkage = Adder()
 
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
