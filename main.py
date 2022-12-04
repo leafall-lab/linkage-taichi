@@ -754,8 +754,8 @@ def Line() -> Linkage:
 def main():
     dt = 0.01  # <= 0.01, 0.01 is slowest.
     substeps = int(1 / 100 // dt)
-    isRun = 1
     isPreview = 0
+    isPressing = 0
 
     # # linkage = GrashofFourBarLinkage(3)
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
@@ -807,22 +807,40 @@ def main():
         if window.get_event(ti.ui.PRESS):
             if window.event.key == ' ':  # space
                 step_diff = 1 - step_diff
+                isPressing = 0
+
             if window.event.key == 'Return':  # 1
-                if (isPreview != 0):
-                    isPreview = 0
-                else:
-                    isPreview = 1
-                # isPreview = 1 if !isPreview else isPreview = 0
+                isPreview = 1 - isPreview
+
+            if window.event.key == ti.ui.LMB:
+                isPressing = 1
+
+        if window.get_event(ti.ui.RELEASE):
+            if window.event.key:
+                isPressing = 0
+                driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
 
         driver = linkage.get_driver()
 
         create_points(vertices, cursor, isTracked, driver)
+        paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
 
         # paint_track(vertices, isTracked)
         if (isPreview != 1):
             ish_paint_line(vertices, indices, lineColor, cursor)
 
-        paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
+        if (isPressing == 1):
+            driverColor = ti.hex_to_rgb(0xfca311)
+            paint_bg(black, isPreview)
+            create_points(vertices, cursor, isTracked, driver)
+            ish_paint_line(vertices, indices, lineColor, cursor)
+            paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
+
+        # if (step_diff != 1):
+        #     if window.get_event((ti.ui.PRESS, ti.ui.LMB)):
+        #         driverColor = ti.math.vec3(ti.hex_to_rgb(0xef8354))
+        #     if window.get_event((ti.ui.RELEASE, ti.ui.LMB)):
+        #         driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
 
         canvas.set_image(pixels)
         # video_manager.write_frame(window.get_image_buffer_as_numpy())
