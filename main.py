@@ -647,7 +647,10 @@ def paint_bg(color: ti.math.vec3, isPreview: ti.u8):
 
 @ti.func
 def trans_pos(pos: ti.math.vec2) -> ti.math.vec2:
-    position = (pos + (5, 10)) * 40
+    # position = (pos + (5, 10)) * 40
+    # position = (pos + (15, 30)) * 20
+    position = (pos + (27, 25)) * 15
+    # position = (pos + (2, 4)) * 100
     return position
 
 
@@ -660,7 +663,7 @@ def ish_paint_line(vertices: ti.template(), indices: ti.template(), color: ti.ma
         # n = (abs(pointB[0] - pointA[0]) + abs(pointB[1] - pointA[1]))
         n = ti.math.floor(n) + 1
         width = 0.5
-        strength = 0.1
+        strength = 0.2
         unitX = (pointB[0] - pointA[0]) / n
         unitY = (pointB[1] - pointA[1]) / n
 
@@ -681,7 +684,7 @@ def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2
         dist = abs(nowA - n[1] % 120) / 120
         # dist = min(abs(now - n[1]), (290-now-n[1]))/145
         size = (1 - dist) * 0.5
-        strength = (1 - dist + 0.1) * 0.2
+        strength = (1 - dist + 0.1) * 0.9
 
         if all(trackedPoints[n] != [0, 0]):
             # size = (1-(abs((step%145)-n[1]))/144)*0.4
@@ -695,6 +698,37 @@ def get_tracked_points(vertices: ti.template(), isTracked: ti.template(), tracke
         if isTracked[n][0] != 0:
             trackedPoints[i, steps] = vertices[n].xy
             i += 1
+
+
+def Mover() -> Linkage:
+    builder = LinkageBuilder()
+    x = builder.add_straight_line(color_hint=(0, 0, 0))
+    p = builder.add_mover(x, 2, 3)
+    # a = builder.add_fixed(1, 0)
+    # b = builder.add_fixed(0.5, 0)
+    # a = builder.add_fixed(8, 0)
+    # b = builder.add_straight_line(color_hint=(0, 0, 0))
+    # a = builder.add_zoomer(o, b, 1.5, (0, 0, 0))
+    # p = builder.add_adder(b, a, o)
+    # p = builder.add_adder(b, a, o)
+    builder.set_color(p, (1.0, 0.0, 0.0))
+    return builder.get_linkage()
+
+
+def Zoomer() -> Linkage:
+    builder = LinkageBuilder()
+    x = builder.add_straight_line(color_hint=(0, 0, 0))
+    o = builder.add_fixed()
+    p = builder.add_zoomer(o, x, 3)
+    # a = builder.add_fixed(1, 0)
+    # b = builder.add_fixed(0.5, 0)
+    # a = builder.add_fixed(8, 0)
+    # b = builder.add_straight_line(color_hint=(0, 0, 0))
+    # a = builder.add_zoomer(o, b, 1.5, (0, 0, 0))
+    # p = builder.add_adder(b, a, o)
+    # p = builder.add_adder(b, a, o)
+    builder.set_color(p, (1.0, 0.0, 0.0))
+    return builder.get_linkage()
 
 
 def Squarer() -> Linkage:
@@ -758,7 +792,13 @@ def main():
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     # linkage = eval(name + "()")
 
-    linkage = YEqualKx(0.5)
+    # linkage = YEqualKx(0.5)
+    # linkage = YEqInvX()
+    # linkage = Line()
+    # linkage = Mover()
+    # linkage = Zoomer()
+    linkage = Squarer()
+    # linkage = basic_adder()
 
     # p = builder.add_inverter(o, x)
     # p = builder.add_squarer(o, x)
@@ -779,6 +819,10 @@ def main():
     trackColor = ti.math.vec3(ti.hex_to_rgb(0x38a3a5))
     lineColor = ti.math.vec3(ti.hex_to_rgb(0x22577a))
 
+    # driverColor = white
+    # trackColor = white
+    # lineColor = white
+
     current_t = 0.0
     steps = 0
 
@@ -788,13 +832,6 @@ def main():
 
     while window.running:
         linkage.substep(steps)
-        vertices = linkage.get_vertices()
-        indices = linkage.get_indices()
-        isTracked = linkage.get_istracked()
-        cursor = ti.math.vec2(window.get_cursor_pos()) * res
-
-        if (steps < 145):
-            get_tracked_points(vertices, isTracked, trackedPoints, steps)
 
         # print(trackedPoints)
 
@@ -802,7 +839,6 @@ def main():
         steps += step_diff
         current_t += dt
 
-        paint_bg(black, isPreview)
         # print(linkage.get_vertices())
 
         if window.get_event(ti.ui.PRESS):
@@ -816,10 +852,62 @@ def main():
             if window.event.key == ti.ui.LMB:
                 isPressing = 1
 
+            if window.event.key == 'a':
+                linkage = YEqualKx(0.5)
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 's':
+                linkage = Line()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 'd':
+                linkage = Mover()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 'f':
+                linkage = Zoomer()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 'g':
+                linkage = Squarer()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 'h':
+                linkage = basic_adder()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
+            if window.event.key == 'j':
+                linkage = YEqInvX()
+                linkage.substep(steps)
+                steps = 0
+                trackedPoints.fill(0)
+
         if window.get_event(ti.ui.RELEASE):
             if window.event.key:
                 isPressing = 0
                 driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
+
+        vertices = linkage.get_vertices()
+        indices = linkage.get_indices()
+        isTracked = linkage.get_istracked()
+        cursor = ti.math.vec2(window.get_cursor_pos()) * res
+
+        if (steps < 120):
+            get_tracked_points(vertices, isTracked, trackedPoints, steps)
+
+        paint_bg(black, isPreview)
 
         driver = linkage.get_driver()
 
