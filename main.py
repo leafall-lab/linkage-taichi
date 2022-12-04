@@ -2,8 +2,7 @@ from linkage_ti import ui, cases
 
 
 def main():
-    linkage = cases.YEqualKx(0.5)
-
+    linkage = cases.taichi()
     ui.show(linkage)
 
 

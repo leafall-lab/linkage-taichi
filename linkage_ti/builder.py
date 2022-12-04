@@ -49,7 +49,7 @@ class LinkageBuilder:
         self.driver = n + 2
 
         self.register_color(n, color_hint)
-        self.track([n + 5])
+        # self.track([n + 5])
         return self.vertices() - 1
 
     # add origin
@@ -67,7 +67,7 @@ class LinkageBuilder:
     def add_axes(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
 
-        basic = 12.8
+        basic = 24
 
         self.infos.extend([
             VertexInfo(VertexType.Driven, [o, basic, x, basic, 1]),  # +0
@@ -78,7 +78,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 4])
+        # self.track([n + 4])
         return self.vertices() - 1
 
     # add zoomer (constant multiplier)
@@ -86,7 +86,7 @@ class LinkageBuilder:
     # return: id of result
     def add_zoomer(self, o: int, x: int, multi: float = 2, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 6.5
+        basic = 21.4
 
         shorter = (0.0001 + abs(multi - 1)) * basic
 
@@ -98,7 +98,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 3])
+        # self.track([n + 3])
         return self.vertices() - 1
 
     # add vector adder
@@ -106,8 +106,8 @@ class LinkageBuilder:
     # return id of op1+op2
     def add_adder(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic1 = 6
-        basic2 = 6
+        basic1 = 20
+        basic2 = 20
         # print("n=", n, " o=", o, " a=", a, " b=", b)
 
         self.infos.extend([
@@ -120,7 +120,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 5])
+        # self.track([n + 5])
         return self.vertices() - 1
 
     # oa - ob = ba, and need move its start point to o, so we need to cal `bo + ba`.
@@ -136,12 +136,12 @@ class LinkageBuilder:
     # TODO: refine direction hint logic of +4
     def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 24.8
+        basic = 19.8
 
-        x0 = random.uniform(-5, 0)
-        y0 = random.uniform(-5, 0)
-        # x0 = -3
-        # y0 = 3
+        # x0 = random.uniform(-5, 0)
+        # y0 = random.uniform(-5, 0)
+        x0 = 10
+        y0 = 8
 
         d = math.sqrt(dx * dx + dy * dy)
 
@@ -155,7 +155,7 @@ class LinkageBuilder:
         self.add_extra_lines([[n + 0, n + 1]])
 
         self.register_color(n, color_hint)
-        self.track([n + 4])
+        # self.track([n + 4])
         return self.vertices() - 1
 
     # add an inverter
@@ -176,7 +176,7 @@ class LinkageBuilder:
         # self.extra_lines.append([n + 1, n + 2])
 
         self.register_color(n, color_hint)
-        self.track([n + 2])
+        # self.track([n + 2])
         return self.vertices() - 1
 
     # add a squarer

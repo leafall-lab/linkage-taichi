@@ -6,7 +6,7 @@ from .linkage import Linkage
 windowSize = 768
 strong = windowSize * 0.001
 
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.cpu)
 
 driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
 trackColor = ti.math.vec3(ti.hex_to_rgb(0x99c1b9))
