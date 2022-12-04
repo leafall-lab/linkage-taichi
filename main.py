@@ -485,11 +485,11 @@ class LinkageBuilder:
         subed = self.add_suber(o, inv_sub, inv_add)
         #
         inved = self.add_inverter(o, subed)
-        # inv2 = self.add_zoomer(o, inved, 2)
+        inv2 = self.add_zoomer(o, inved, 2)
         #
-        # inv2 = self.add_mover(inv2, 1, 0)
+        inv2 = self.add_mover(inv2, 1, 0)
 
-        # self.register_color(n, color_hint)
+        self.register_color(n, color_hint)
         return self.vertices() - 1
 
     def vertices(self):
@@ -539,17 +539,19 @@ def Mover() -> Linkage:
 def Squarer() -> Linkage:
     builder = LinkageBuilder()
     o = builder.add_fixed(color_hint=(1, 1, 1))
-    x = builder.add_straight_line(2, 3)
-    # x = builder.add_mover(x, 2, 0, )
-    # x = builder.add_zoomer(o, x, 0.5, )
-    builder.set_color(x, (0.0, 1.0, 0.0))
+    x = builder.add_straight_line(1.5, 3)
     x2 = builder.add_squarer(o, x)
-    # y = builder.add_axes(o, x2)
-    # builder.set_color(y, (0.0, 0.0, 1.0))
+    y = builder.add_axes(o, x2)
+    # builder.set_color(x, (0.0, 1.0, 0.0))
     #
-    # p = builder.add_adder(o, x, y)
+    # x2 = builder.add_squarer(o, x)
+    # builder.set_color(y, (0.0, 0.0, 1.0))
+    p = builder.add_adder(o, x, y)
 
-    builder.set_color(x2, (1.0, 0.0, 0.0))
+    builder.set_color(p, (0.0, 1.0, 0.0))
+    builder.set_color(x, (1.0, 0.0, 0.0))
+    builder.set_color(y, (1.0, 0.0, 0.0))
+    builder.add_extra_lines([[p, x], [p, y]])
 
     return builder.get_linkage()
 
@@ -557,7 +559,7 @@ def Squarer() -> Linkage:
 def YEqInvX() -> Linkage:
     builder = LinkageBuilder()
     o = builder.add_fixed()
-    x = builder.add_straight_line(0.25, 6)
+    x = builder.add_straight_line(0.35, 6)
     inv = builder.add_inverter(o, x)
     y = builder.add_axes(o, inv)
     p = builder.add_adder(o, x, y)
@@ -602,7 +604,7 @@ def main():
     # p = builder.add_inverter(o, x)
     # p = builder.add_squarer(o, x)
 
-    linkage = Squarer()
+    linkage = YEqInvX()
     # linkage = basic_adder()
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
