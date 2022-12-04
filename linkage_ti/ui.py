@@ -91,7 +91,7 @@ def paint_bg(color: ti.math.vec3, isPreview: ti.u8):
 
 @ti.func
 def trans_pos(pos: ti.math.vec2) -> ti.math.vec2:
-    position = (pos + (5, 10)) * 40
+    position = (pos + (30, 30)) * 15
     return position
 
 

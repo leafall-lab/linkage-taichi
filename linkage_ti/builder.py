@@ -1,4 +1,5 @@
 import math
+import random
 from typing import List, Tuple
 
 from .linkage import Linkage, VertexInfo, VertexType
@@ -49,7 +50,7 @@ class LinkageBuilder:
         self.driver = n + 2
 
         self.register_color(n, color_hint)
-        self.track([n + 5])
+        # self.track([n + 5])
         return self.vertices() - 1
 
     # add origin
@@ -67,7 +68,7 @@ class LinkageBuilder:
     def add_axes(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
 
-        basic = 12.8
+        basic = 24
 
         self.infos.extend([
             VertexInfo(VertexType.Driven, [o, basic, x, basic, 1]),  # +0
@@ -78,7 +79,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 4])
+        # self.track([n + 4])
         return self.vertices() - 1
 
     # add zoomer (constant multiplier)
@@ -86,7 +87,7 @@ class LinkageBuilder:
     # return: id of result
     def add_zoomer(self, o: int, x: int, multi: float = 2, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 6.5
+        basic = 21.4
 
         shorter = (0.0001 + abs(multi - 1)) * basic
 
@@ -155,7 +156,7 @@ class LinkageBuilder:
         self.add_extra_lines([[n + 0, n + 1]])
 
         self.register_color(n, color_hint)
-        self.track([n + 4])
+        # self.track([n + 4])
         return self.vertices() - 1
 
     # add an inverter
