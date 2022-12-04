@@ -12,10 +12,6 @@ black = ti.math.vec3(0, 0, 0)
 white = ti.math.vec3(1, 1, 1)
 red = ti.math.vec3(1, 0, 0)
 
-driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
-trackColor = ti.math.vec3(ti.hex_to_rgb(0x38a3a5))
-lineColor = ti.math.vec3(ti.hex_to_rgb(0x22577a))
-
 purple = ti.math.vec3(ti.hex_to_rgb(0x8e7dbe))
 green = ti.math.vec3(ti.hex_to_rgb(0x81B29A))
 blue = ti.math.vec3(ti.hex_to_rgb(0x4f5d75))
@@ -625,7 +621,8 @@ def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.
 
 
 @ti.kernel
-def create_points(vertices: ti.template(), cursor: ti.math.vec2, tracked: ti.template(), driver: ti.i32):
+def create_points(vertices: ti.template(), cursor: ti.math.vec2, tracked: ti.template(), driver: ti.i32,
+                  driverColor: ti.math.vec3, trackColor: ti.math.vec3, lineColor: ti.math.vec3):
     for n in range(vertices.shape[0]):
         pos = trans_pos(vertices[n].xy)
         if (n == driver):
@@ -676,7 +673,7 @@ def ish_paint_line(vertices: ti.template(), indices: ti.template(), color: ti.ma
 
 
 @ti.kernel
-def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2):
+def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2, color: ti.math.vec3):
     for n in ti.grouped(trackedPoints):
         pos = trans_pos(trackedPoints[n])
         now = step % 240
@@ -688,7 +685,7 @@ def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2
 
         if all(trackedPoints[n] != [0, 0]):
             # size = (1-(abs((step%145)-n[1]))/144)*0.4
-            paint_point(pos=pos, size=size, cursor=cursor, zone=30., strength=strength, color=trackColor, notTrack=1)
+            paint_point(pos=pos, size=size, cursor=cursor, zone=30., strength=strength, color=color, notTrack=1)
 
 
 @ti.kernel
@@ -778,6 +775,10 @@ def main():
     camera.position(0, 0, 5)
     camera.lookat(0, 0, 0)
 
+    driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
+    trackColor = ti.math.vec3(ti.hex_to_rgb(0x38a3a5))
+    lineColor = ti.math.vec3(ti.hex_to_rgb(0x22577a))
+
     current_t = 0.0
     steps = 0
 
@@ -822,8 +823,8 @@ def main():
 
         driver = linkage.get_driver()
 
-        create_points(vertices, cursor, isTracked, driver)
-        paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
+        create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor)
+        paint_track(steps, trackedPoints=trackedPoints, cursor=cursor, color=trackColor)
 
         # paint_track(vertices, isTracked)
         if (isPreview != 1):
@@ -832,9 +833,9 @@ def main():
         if (isPressing == 1):
             driverColor = ti.hex_to_rgb(0xfca311)
             paint_bg(black, isPreview)
-            create_points(vertices, cursor, isTracked, driver)
+            create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor)
             ish_paint_line(vertices, indices, lineColor, cursor)
-            paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
+            paint_track(steps, trackedPoints=trackedPoints, cursor=cursor, color=trackColor)
 
         # if (step_diff != 1):
         #     if window.get_event((ti.ui.PRESS, ti.ui.LMB)):
