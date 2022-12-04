@@ -1,5 +1,4 @@
 import math
-import random
 from typing import List, Tuple
 
 from .linkage import Linkage, VertexInfo, VertexType
@@ -107,8 +106,8 @@ class LinkageBuilder:
     # return id of op1+op2
     def add_adder(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic1 = 6
-        basic2 = 6
+        basic1 = 20
+        basic2 = 20
         # print("n=", n, " o=", o, " a=", a, " b=", b)
 
         self.infos.extend([
@@ -121,7 +120,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 5])
+        # self.track([n + 5])
         return self.vertices() - 1
 
     # oa - ob = ba, and need move its start point to o, so we need to cal `bo + ba`.
@@ -137,12 +136,12 @@ class LinkageBuilder:
     # TODO: refine direction hint logic of +4
     def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 24.8
+        basic = 19.8
 
-        x0 = random.uniform(-5, 0)
-        y0 = random.uniform(-5, 0)
-        # x0 = -3
-        # y0 = 3
+        # x0 = random.uniform(-5, 0)
+        # y0 = random.uniform(-5, 0)
+        x0 = 10
+        y0 = 8
 
         d = math.sqrt(dx * dx + dy * dy)
 
@@ -177,7 +176,7 @@ class LinkageBuilder:
         # self.extra_lines.append([n + 1, n + 2])
 
         self.register_color(n, color_hint)
-        self.track([n + 2])
+        # self.track([n + 2])
         return self.vertices() - 1
 
     # add a squarer

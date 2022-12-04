@@ -5,7 +5,7 @@ from .linkage import Linkage
 
 windowSize = 768
 
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.cpu)
 
 driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
 trackColor = ti.math.vec3(ti.hex_to_rgb(0x99c1b9))
@@ -91,7 +91,7 @@ def paint_bg(color: ti.math.vec3, isPreview: ti.u8):
 
 @ti.func
 def trans_pos(pos: ti.math.vec2) -> ti.math.vec2:
-    position = (pos + (30, 30)) * 15
+    position = (pos + (20, 25)) * 15
     return position
 
 

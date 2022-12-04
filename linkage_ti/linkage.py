@@ -52,6 +52,8 @@ class Linkage:
         self.driver = driver
         self.trackedNum = 0
 
+        print("N =", self.N)
+
         lines = lines or []
         for i in range(self.N):
             if self.vertex_infos[i].tp == VertexType.Driven:

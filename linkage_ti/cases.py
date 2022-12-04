@@ -245,3 +245,42 @@ def Line() -> Linkage:
 
     o = builder.add_fixed()
     return builder.get_linkage()
+
+
+def taichi() -> Linkage:
+    b = LinkageBuilder()
+
+    o = b.add_fixed(0, 0)
+    x = b.add_straight_line(1, 5)
+    y = b.add_axes(o, x)
+
+    ch_t_0 = b.add_mover(x, 0, 5)
+    ch_t_1 = b.add_mover(y, 3, 0)
+
+    ch_a_0_x = b.add_zoomer(o, x, 0.5)
+    ch_a_0_x = b.add_mover(ch_a_0_x, 4.5, 0)
+    ch_a_0 = b.add_adder(o, ch_a_0_x, y)
+    ch_a_1_x = b.add_mover(ch_a_0_x, 2, 6)
+    ch_a_1 = b.add_suber(o, ch_a_1_x, y)
+
+    ch_i_0 = b.add_mover(ch_a_0_x, 5, 1)
+    ch_i_1 = b.add_mover(ch_a_0_x, 5, 5)
+    ch_i_2 = b.add_mover(ch_t_1, 8, 0)
+
+    ch_c_0 = b.add_mover(ch_i_0, 4, 0)
+    ch_c_1 = b.add_mover(ch_i_1, 4, 0)
+    ch_c_2 = b.add_mover(ch_i_2, 3, 0)
+
+    ch_h_0 = b.add_mover(ch_c_2, 4, 0)
+    ch_h_1 = b.add_mover(ch_h_0, 2, 0)
+    ch_h_2 = b.add_mover(ch_c_0, 4, 2)
+
+    ch_i1_0 = b.add_mover(ch_h_2, 4, 2)
+    ch_i1_1 = b.add_mover(ch_h_2, 4, -2)
+    ch_i1_2 = b.add_mover(ch_h_1, 3, 0)
+
+    b.track(
+        [ch_t_0, ch_t_1, ch_a_0, ch_a_1, ch_i_0, ch_i_1, ch_i_2, ch_c_0, ch_c_1, ch_c_2, ch_h_0, ch_h_1, ch_h_2,
+         ch_i1_0, ch_i1_1, ch_i1_2])
+
+    return b.get_linkage()
