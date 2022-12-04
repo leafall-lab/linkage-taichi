@@ -84,11 +84,14 @@ class Linkage:
 
                 if len(info.param) == 6:  # if it can't form a Parallelogram, use the other intersection
                     anti_hint = info.param[5]
-
                     x0, y0 = self.vertices[anti_hint][0], self.vertices[anti_hint][1]
-                    if abs((y1 - y0) * (x3 - x2) - (y3 - y2) * (x1 - x0)) > 1e-2:
+
+                    x3d, y3d = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
+                    diff1 = abs((y1 - y0) * (x3 - x2) - (y3 - y2) * (x1 - x0))
+                    diffd = abs((y1 - y0) * (x3d - x2) - (y3d - y2) * (x1 - x0))
+                    if diffd + 1e-3 < diff1:
+                        x3, y3 = x3d, y3d
                         info.param[4] = 1 - info.param[4]
-                        x3, y3 = intersect_of_circle(x1, y1, r1, x2, y2, r2)[1 - hint]
                 self.vertices[i] = [x3, y3, 0]
 
     def get_vertices(self):
@@ -396,16 +399,17 @@ class LinkageBuilder:
     # return id of op1+op2
     def add_adder(self, o: int, a: int, b: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 10.0
+        basic1 = 6
+        basic2 = 6
         # print("n=", n, " o=", o, " a=", a, " b=", b)
 
         self.infos.extend([
-            VertexInfo(VertexType.Driven, [o, basic, a, basic, 1]),  # +0
-            VertexInfo(VertexType.Driven, [o, basic, b, basic, 1]),  # +1
-            VertexInfo(VertexType.Driven, [n + 0, basic, n + 1, basic, 0, o]),  # +2
-            VertexInfo(VertexType.Driven, [a, basic, n + 2, basic, 1, n + 0]),  # +3, not equal to +0
-            VertexInfo(VertexType.Driven, [n + 2, basic, b, basic, 1, n + 1]),  # +4, not equal to +1
-            VertexInfo(VertexType.Driven, [n + 3, basic, n + 4, basic, 1, n + 2]),  # +5
+            VertexInfo(VertexType.Driven, [o, basic2, a, basic1, 1]),  # +0
+            VertexInfo(VertexType.Driven, [o, basic1, b, basic2, 1]),  # +1
+            VertexInfo(VertexType.Driven, [n + 0, basic1 + 1e-4, n + 1, basic2 + 1e-4, 0, o]),  # +2
+            VertexInfo(VertexType.Driven, [a, basic1, n + 2, basic2, 1, n + 0]),  # +3, not equal to +0
+            VertexInfo(VertexType.Driven, [n + 2, basic1, b, basic2, 1, n + 1]),  # +4, not equal to +1
+            VertexInfo(VertexType.Driven, [n + 3, basic1 + 1e-4, n + 4, basic2 + 1e-4, 1, n + 2]),  # +5
         ])
 
         self.register_color(n, color_hint)
@@ -424,7 +428,7 @@ class LinkageBuilder:
     # TODO: refine direction hint logic of +4
     def add_mover(self, x: int, dx: float, dy: float, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
-        basic = 12.8
+        basic = 24.8
 
         x0 = random.uniform(-5, 0)
         y0 = random.uniform(-5, 0)
@@ -453,7 +457,7 @@ class LinkageBuilder:
         n: int = self.vertices()
 
         basic = 12.8
-        tx = math.sqrt(basic * basic - 1)
+        tx = math.sqrt(basic * basic - 3)
 
         self.infos.extend([
             VertexInfo(VertexType.Driven, [o, basic, x, tx, 0]),  # n
@@ -476,16 +480,16 @@ class LinkageBuilder:
         psub1 = self.add_mover(x, -1, 0)
         padd1 = self.add_mover(x, 1, 0)
         #
-        inv_sub = self.add_inverter(o, psub1)
-        inv_add = self.add_inverter(o, padd1)
+        inv_sub = self.add_inverter(o, psub1, (1, 1, 0))
+        inv_add = self.add_inverter(o, padd1, (1, 1, 0))
         subed = self.add_suber(o, inv_sub, inv_add)
         #
         inved = self.add_inverter(o, subed)
-        inv2 = self.add_zoomer(o, inved, 2)
+        # inv2 = self.add_zoomer(o, inved, 2)
+        #
+        # inv2 = self.add_mover(inv2, 1, 0)
 
-        inv2 = self.add_mover(inv2, 1, 0)
-
-        self.register_color(n, color_hint)
+        # self.register_color(n, color_hint)
         return self.vertices() - 1
 
     def vertices(self):
@@ -496,8 +500,8 @@ class LinkageBuilder:
 
     # set p as the traced point (config it's color), and return the linkage
     def set_color(self, p: int, color: Tuple[float, float, float]):
-        print("set_color", p, color)
-        print("self.colors", len(self.colors))
+        # print("set_color", p, color)
+        # print("self.colors", len(self.colors))
         self.colors[p] = color
 
     def add_extra_lines(self, lines: List[List[int]]):
@@ -535,17 +539,17 @@ def Mover() -> Linkage:
 def Squarer() -> Linkage:
     builder = LinkageBuilder()
     o = builder.add_fixed(color_hint=(1, 1, 1))
-    x = builder.add_straight_line()
-    x = builder.add_mover(x, 2, 0, )
-    x = builder.add_zoomer(o, x, 0.5, )
+    x = builder.add_straight_line(2, 3)
+    # x = builder.add_mover(x, 2, 0, )
+    # x = builder.add_zoomer(o, x, 0.5, )
     builder.set_color(x, (0.0, 1.0, 0.0))
-    x2 = builder.add_squarer(o, x, )
-    y = builder.add_axes(o, x2, )
-    builder.set_color(y, (0.0, 0.0, 1.0))
+    x2 = builder.add_squarer(o, x)
+    # y = builder.add_axes(o, x2)
+    # builder.set_color(y, (0.0, 0.0, 1.0))
+    #
+    # p = builder.add_adder(o, x, y)
 
-    p = builder.add_adder(o, x, y)
-
-    builder.set_color(p, (1.0, 0.0, 0.0))
+    builder.set_color(x2, (1.0, 0.0, 0.0))
 
     return builder.get_linkage()
 
@@ -563,12 +567,14 @@ def YEqInvX() -> Linkage:
 
 def basic_adder() -> Linkage:
     builder = LinkageBuilder()
-    o = builder.add_fixed()
+    o = builder.add_fixed(0, 0)
+    a = builder.add_fixed(1, 0)
+    b = builder.add_fixed(0.5, 0)
     # a = builder.add_fixed(8, 0)
-    b = builder.add_straight_line(color_hint=(0, 0, 0))
-    a = builder.add_zoomer(o, b, 1.5, (0, 0, 0))
+    # b = builder.add_straight_line(color_hint=(0, 0, 0))
+    # a = builder.add_zoomer(o, b, 1.5, (0, 0, 0))
     # p = builder.add_adder(b, a, o)
-    p = builder.add_suber(o, a, b)
+    p = builder.add_adder(b, a, o)
     builder.set_color(p, (1.0, 0.0, 0.0))
     return builder.get_linkage()
 
@@ -596,8 +602,8 @@ def main():
     # p = builder.add_inverter(o, x)
     # p = builder.add_squarer(o, x)
 
-    linkage = YEqInvX()
-
+    linkage = Squarer()
+    # linkage = basic_adder()
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
 
@@ -605,7 +611,7 @@ def main():
     canvas = window.get_canvas()
     scene = ti.ui.Scene()
     camera = ti.ui.Camera()
-    camera.position(0, 0, 30)
+    camera.position(0, 0, 5)
     camera.lookat(0, 0, 0)
 
     current_t = 0.0
