@@ -1,46 +1,24 @@
-# linkage
+# linkage-taichi
 
-## 团队名：叶秋
+An efficient, freely editable linkage system powered by [taichi](https://docs.taichi-lang.cn/).
 
-## 项目名：LinkageMechanism
+This project is build in Taichi Hackathon 2022, see our Chinese design doc [here](/design-ch.md).
 
-## 项目介绍
+## Usage
 
-使用 taichi 实现一个高效的、自由编辑的连杆系统。
+prepare environment:
 
-### 创作背景
+```shell
+pip3 install -r requirements.txt
+```
 
-连杆机构（mechanical linkage）是由许多构件组成，用来传递力及运动的机械结构。简化后的连杆机构可以抽象为由一个绕圆弧运动的点、若干固定点与从动点、以及若干个刚体杆组成。
+run:
 
-在下图的连杆机构中，A、B 是固定点，D 是驱动点，C、E 是从动点。D 在圆周上运动，E 点的轨迹会形成一个复杂的图形。而这个连杆机构正是缝纫机的原理。
+```shell
+python3 main.py
+```
 
-![图源：维基百科 - 连杆机构](https://user-images.githubusercontent.com/30543181/203803774-3c173fc6-6bf4-4e5d-b725-ece1076aaf46.gif)
+You can replace the linkage name in `main.py` by the linkages in `linkages/cases.py`, or build your own linkage system
+based on LinkageBuilder.
 
-其他经典的连杆例子还包括：杠杆（最简单的连杆）、雨刷、内燃机、行走机器人的腿型结构等。简而言之，连杆就是一个将圆轨迹变为特定轨迹的机械结构。
-
-历史上有多位科学家和工程师对连杆的性质进行了研究，他们发现与证明了许多结论，从连杆机构可以画出直线开始，直到可以使用连杆机构可以画出任意曲线。
-
-我们准备使用 Taichi 来实现一个高效的、自由编辑的连杆系统。
-
-### 功能目标
-
-我们想要用 Taichi 来构建一个自由的连杆机构编辑系统，包含两种编辑方式：
-
-- 输入表达式 f(x,y) = 0，得到一个连杆系统，这个连杆系统可以画出这个方程对应的曲线。
-- 在已给定的连杆机构上，通过拖拽点和连杆，得到新的连杆机构，产生新的曲线。
-
-### 实现拆解
-
-目标 1：实现基础的连杆系统，在代码中指定固定点、驱动点、从动点之间的联系，生成对应的连杆机构。
-
-目标 2：在目标 1
-的基础上进一步抽象，构造若干基本连杆部件，例如：直线连杆（得到一个轨迹为直线的动点）、坐标系（两根相互垂直的直线）、常量加法器（将动点的坐标加上一个矢量，得到另一个动点轨迹）、常量减法器、常量乘法器（将动点的坐与一个常量矢量求内积，得到另一个动点的左边）、变量加法器（将两个动点的坐标相加）、变量乘法器（将两个动点的坐标相乘）等。
-
-目标 3：以目标 2 中的部件为单位，构造出任意的参数方程，并接收用户输入。
-
-目标 4：支持友好的用户接口，能够让用户自由地在界面上进行点和连杆的拖动，即连杆机构的“编辑”。
-
-### 灵感来源
-
-最初在顾森（即 Matrix67）《思考的乐趣》中看到了对连杆系统的描述，后来在[视频](https://www.bilibili.com/video/BV18h411W78v)中看到 up 对连杆机构的进一步科普。视频的 Up
-主试图用连杆机构来画出任意曲线，但受限于算法和图形框架，无法实现高效的乘法器，导致渲染极慢无比。于是想要使用更高效的计算语言 Taichi 以及更优秀的算法来实现一个自定义连杆系统。
+Have fun!

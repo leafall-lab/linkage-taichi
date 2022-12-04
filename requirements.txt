@@ -1,0 +1,10 @@
+Pygments==2.13.0
+colorama==0.4.6
+commonmark==0.9.1
+dill==0.3.6
+numpy==1.23.5
+pip==21.0.1
+rich==12.6.0
+setuptools==54.2.0
+sourceinspect==0.0.4
+taichi==1.3.0
