@@ -54,14 +54,15 @@ def paint_point(pos: ti.math.vec2, size: ti.f32, cursor: ti.math.vec2, zone: ti.
 
 @ti.kernel
 def create_points(vertices: ti.template(), cursor: ti.math.vec2, tracked: ti.template(), driver: ti.i32,
-                  driverColor: ti.math.vec3, trackColor: ti.math.vec3, lineColor: ti.math.vec3, zoom: ti.f32, x: ti.f32,
+                  driverColor: ti.math.vec3, trackColor: ti.math.vec3, lineColor: ti.math.vec3, trackedSize: ti.f32,
+                  zoom: ti.f32, x: ti.f32,
                   y: ti.f32):
     for n in range(vertices.shape[0]):
         pos = trans_pos(vertices[n].xy, zoom, x, y)
         if (n == driver):
-            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=.8, color=driverColor, notTrack=1)
+            paint_point(pos=pos, size=trackedSize, cursor=cursor, zone=30., strength=.8, color=driverColor, notTrack=1)
         if (tracked[n][0] != 0):
-            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=1., color=trackColor, notTrack=0)
+            paint_point(pos=pos, size=trackedSize, cursor=cursor, zone=30., strength=1., color=trackColor, notTrack=0)
         else:
             paint_point(pos=pos, size=0.4, cursor=cursor, zone=30., strength=.6, color=lineColor, notTrack=1)
 
@@ -86,7 +87,8 @@ def trans_pos(pos: ti.math.vec2, zoom: ti.f32, x: ti.f32, y: ti.f32) -> ti.math.
 
 
 @ti.kernel
-def paint_line(vertices: ti.template(), indices: ti.template(), color: ti.math.vec3, zoom: ti.f32, x: ti.f32,
+def paint_line(vertices: ti.template(), indices: ti.template(), color: ti.math.vec3, strength: ti.f32, zoom: ti.f32,
+               x: ti.f32,
                y: ti.f32):
     for i in range(indices.shape[0]):
         pointA = trans_pos(vertices[indices[i][0]].xy, zoom, x, y)
@@ -95,7 +97,6 @@ def paint_line(vertices: ti.template(), indices: ti.template(), color: ti.math.v
         # n = (abs(pointB[0] - pointA[0]) + abs(pointB[1] - pointA[1]))
         n = ti.math.floor(n) + 1
         width = 0.5
-        strength = 0.2
         unitX = (pointB[0] - pointA[0]) / n
         unitY = (pointB[1] - pointA[1]) / n
 
@@ -108,14 +109,15 @@ def paint_line(vertices: ti.template(), indices: ti.template(), color: ti.math.v
 
 
 @ti.kernel
-def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2, color: ti.math.vec3, zoom: ti.f32,
+def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2, color: ti.math.vec3,
+                trackedSize: ti.f32, zoom: ti.f32,
                 x: ti.f32, y: ti.f32):
     for n in ti.grouped(trackedPoints):
         pos = trans_pos(trackedPoints[n], zoom, x, y)
         now = step % 240
         nowA = now if now < 120 else 239 - now
         dist = abs(nowA - n[1] % 120) / 120
-        size = (1 - dist) * 0.5
+        size = (1 - dist) * trackedSize
         strength = (1 - dist + 0.1) * 0.9
 
         if all(trackedPoints[n] != [0, 0]):
@@ -144,6 +146,7 @@ def show(linkage: Linkage):
     zoom = 20
     x = 10
     y = 15
+    trackedSize = 0.7
 
     driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
     trackColor = ti.math.vec3(ti.hex_to_rgb(0x38a3a5))
@@ -182,6 +185,10 @@ def show(linkage: Linkage):
             y += 1
         if window.is_pressed(ti.ui.UP):
             y -= 1
+        if window.is_pressed('n') and trackedSize < 0.99:
+            trackedSize += 0.01
+        if window.is_pressed('m') and trackedSize > 0.01:
+            trackedSize -= 0.01
 
         vertices = linkage.get_vertices()
         indices = linkage.get_indices()
@@ -194,19 +201,20 @@ def show(linkage: Linkage):
         paint_bg(black, isPreview)
         driver = linkage.get_driver()
 
-        create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor, zoom, x, y)
-        paint_track(steps, trackedPoints, cursor, trackColor, zoom, x, y)
+        create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor, trackedSize, zoom, x, y)
+        paint_track(steps, trackedPoints, cursor, trackColor, trackedSize, zoom, x, y)
 
         # paint_track(vertices, isTracked)
         if (isPreview != 1):
-            paint_line(vertices, indices, lineColor, zoom, x, y)
+            paint_line(vertices, indices, lineColor, trackedSize / 2, zoom, x, y)
 
         if (isPressing == 1):
             driverColor = ti.hex_to_rgb(0xfca311)
             paint_bg(black, isPreview)
-            create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor, zoom, x, y)
-            paint_line(vertices, indices, lineColor, zoom, x, y)
-            paint_track(steps, trackedPoints, cursor, trackColor, zoom, x, y)
+            create_points(vertices, cursor, isTracked, driver, driverColor, trackColor, lineColor, trackedSize, zoom, x,
+                          y)
+            paint_line(vertices, indices, lineColor, trackedSize / 2, zoom, x, y)
+            paint_track(steps, trackedPoints, cursor, trackColor, trackedSize, zoom, x, y)
 
         canvas.set_image(pixels)
         window.show()
