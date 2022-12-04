@@ -1,5 +1,6 @@
 import enum
 import math
+import random
 from typing import List, Tuple
 
 import taichi as ti
@@ -384,6 +385,7 @@ class LinkageBuilder:
         self.driver = n + 2
 
         self.register_color(n, color_hint)
+        self.track([n + 5])
         return self.vertices() - 1
 
     # add origin
@@ -412,6 +414,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
+        self.track([n + 4])
         return self.vertices() - 1
 
     # add zoomer (constant multiplier)
@@ -431,6 +434,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
+        self.track([n + 3])
         return self.vertices() - 1
 
     # add vector adder
@@ -452,6 +456,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
+        self.track([n + 5])
         return self.vertices() - 1
 
     # oa - ob = ba, and need move its start point to o, so we need to cal `bo + ba`.
@@ -486,6 +491,7 @@ class LinkageBuilder:
         self.add_extra_lines([[n + 0, n + 1]])
 
         self.register_color(n, color_hint)
+        self.track([n + 4])
         return self.vertices() - 1
 
     # add an inverter
@@ -506,6 +512,7 @@ class LinkageBuilder:
         # self.extra_lines.append([n + 1, n + 2])
 
         self.register_color(n, color_hint)
+        self.track([n + 2])
         return self.vertices() - 1
 
     # add a squarer
@@ -529,6 +536,15 @@ class LinkageBuilder:
         # inv2 = self.add_mover(inv2, 1, 0)
 
         # self.register_color(n, color_hint)
+        return self.vertices() - 1
+
+    # add fixed point
+    # need: nothing
+    # return: id of point
+    def add_fixed(self, x: float = 0.0, y: float = 0.0, color_hint: Tuple[float, float, float] = None) -> int:
+        self.infos.extend([VertexInfo(VertexType.Fixed, [x, y])])  # +0
+
+        self.register_color(self.vertices() - 1, color_hint)
         return self.vertices() - 1
 
     def vertices(self):
@@ -662,9 +678,9 @@ def ish_paint_line(vertices: ti.template(), indices: ti.template(), color: ti.ma
 def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2):
     for n in ti.grouped(trackedPoints):
         pos = trans_pos(trackedPoints[n])
-        now = step % 290
-        nowA = now if now < 145 else 289 - now
-        dist = abs(nowA - n[1] % 145) / 145
+        now = step % 240
+        nowA = now if now < 120 else 239 - now
+        dist = abs(nowA - n[1] % 120) / 120
         # dist = min(abs(now - n[1]), (290-now-n[1]))/145
         size = (1 - dist) * 0.5
         strength = (1 - dist + 0.1) * 0.2
@@ -744,12 +760,12 @@ def main():
     # name = sys.argv[1] if len(sys.argv) > 1 else "Multiplier"
     # linkage = eval(name + "()")
 
-    # linkage = YEqualKx(0.5)
+    linkage = YEqualKx(0.5)
 
     # p = builder.add_inverter(o, x)
     # p = builder.add_squarer(o, x)
 
-    linkage = Squarer()
+    # linkage = Squarer()
     # linkage = basic_adder()
     # result_dir = "/Users/lf/llaf/linkage-tc/results"
     # video_manager = ti.tools.VideoManager(output_dir=result_dir, framerate=24, automatic_build=False)
@@ -766,7 +782,7 @@ def main():
 
     step_diff = 1
 
-    trackedPoints = ti.Vector.field(2, dtype=ti.f32, shape=(linkage.get_trackedNum(), 145))
+    trackedPoints = ti.Vector.field(2, dtype=ti.f32, shape=(linkage.get_trackedNum(), 120))
 
     while window.running:
         linkage.substep(steps)
