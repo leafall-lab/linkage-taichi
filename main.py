@@ -13,7 +13,8 @@ white = ti.math.vec3(1, 1, 1)
 red = ti.math.vec3(1, 0, 0)
 
 driverColor = ti.math.vec3(ti.hex_to_rgb(0xd88c9a))
-trackColor = ti.math.vec3(ti.hex_to_rgb(0x99c1b9))
+trackColor = ti.math.vec3(ti.hex_to_rgb(0x38a3a5))
+lineColor = ti.math.vec3(ti.hex_to_rgb(0x22577a))
 
 purple = ti.math.vec3(ti.hex_to_rgb(0x8e7dbe))
 green = ti.math.vec3(ti.hex_to_rgb(0x81B29A))
@@ -628,11 +629,11 @@ def create_points(vertices: ti.template(), cursor: ti.math.vec2, tracked: ti.tem
     for n in range(vertices.shape[0]):
         pos = trans_pos(vertices[n].xy)
         if (n == driver):
-            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=.8, color=red, notTrack=1)
+            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=.8, color=driverColor, notTrack=1)
         if (tracked[n][0] != 0):
-            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=1., color=yellow, notTrack=0)
+            paint_point(pos=pos, size=0.8, cursor=cursor, zone=30., strength=1., color=trackColor, notTrack=0)
         else:
-            paint_point(pos=pos, size=0.4, cursor=cursor, zone=30., strength=.6, color=purple, notTrack=1)
+            paint_point(pos=pos, size=0.4, cursor=cursor, zone=30., strength=.6, color=lineColor, notTrack=1)
 
 
 @ti.kernel
@@ -687,7 +688,7 @@ def paint_track(step: ti.i32, trackedPoints: ti.template(), cursor: ti.math.vec2
 
         if all(trackedPoints[n] != [0, 0]):
             # size = (1-(abs((step%145)-n[1]))/144)*0.4
-            paint_point(pos=pos, size=size, cursor=cursor, zone=30., strength=strength, color=yellow, notTrack=1)
+            paint_point(pos=pos, size=size, cursor=cursor, zone=30., strength=strength, color=trackColor, notTrack=1)
 
 
 @ti.kernel
@@ -819,7 +820,7 @@ def main():
 
         # paint_track(vertices, isTracked)
         if (isPreview != 1):
-            ish_paint_line(vertices, indices, purple, cursor)
+            ish_paint_line(vertices, indices, lineColor, cursor)
 
         paint_track(steps, trackedPoints=trackedPoints, cursor=cursor)
 
