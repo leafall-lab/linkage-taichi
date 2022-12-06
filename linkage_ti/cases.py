@@ -30,7 +30,7 @@ def GrashofFourBarLinkage(radius: float = 1.0) -> Linkage:
         VertexInfo(VertexType.Driven, [1, 7.0, 2, 6.0, 1]),
     ]
     extra_lines = [[0, 1], [0, 2]]
-    return Linkage(info, extra_lines, None, [3], 2)
+    return Linkage(info, extra_lines)
 
 
 def PeaucellierStraightLinkage() -> Linkage:
@@ -179,15 +179,26 @@ def Zoomer(multiple: float = 0.5) -> Linkage:
     return Linkage(info, extra_lines, None, [5, 10], 2)
 
 
-def YEqualKx(k: float = 2.0) -> Linkage:
+def Mover() -> Linkage:
+    builder = LinkageBuilder()
+    # o = builder.add_origin()
+    x = builder.add_straight_line(-10, 10)
+    # x = builder.add_mover(x, 2, 2)
+    x = builder.add_mover(x, -5, 4)
+    # x = builder.add_mover(x, 6, -3)
+
+    builder.track([x])
+    return builder.get_linkage()
+
+
+def YEqualKxAddB(k: float = 2.0, b: float = -3.0) -> Linkage:
     builder = LinkageBuilder()
     x = builder.add_straight_line()
     o = builder.add_origin()
     y = builder.add_axes(o, x)
-    y2 = builder.add_zoomer(o, y, k)
-    p = builder.add_adder(o, x, y2)
-
-    # builder.set_color(p, (1.0, 0.0, 0.0))
+    y_zoomed = builder.add_zoomer(o, y, k)
+    p = builder.add_adder(o, x, y_zoomed)
+    p = builder.add_mover(p, 0, b)
     builder.track([p])
     builder.add_extra_lines([[o, x], [o, y], [o, p]])
 
@@ -197,7 +208,7 @@ def YEqualKx(k: float = 2.0) -> Linkage:
 def Squarer() -> Linkage:
     builder = LinkageBuilder()
     o = builder.add_fixed(color_hint=(1, 1, 1))
-    x = builder.add_straight_line(1.5, 3)
+    x = builder.add_straight_line(3, 5)
     x2 = builder.add_squarer(o, x)
     y = builder.add_axes(o, x2)
     # builder.set_color(x, (0.0, 1.0, 0.0))
@@ -210,6 +221,7 @@ def Squarer() -> Linkage:
     builder.set_color(x, (1.0, 0.0, 0.0))
     builder.set_color(y, (1.0, 0.0, 0.0))
     builder.add_extra_lines([[p, x], [p, y]])
+    builder.track([p, x, y])
 
     return builder.get_linkage()
 

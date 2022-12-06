@@ -98,7 +98,7 @@ class LinkageBuilder:
         ])
 
         self.register_color(n, color_hint)
-        self.track([n + 3])
+        # self.track([n + 3])
         return self.vertices() - 1
 
     # add vector adder
@@ -181,22 +181,21 @@ class LinkageBuilder:
 
     # add a squarer
     # need: id or o and x
-    # return: id of squared point `t`
-    # ot = ox^2
+    # return: id of squared point `t`, make ot = ox^2
     # p^2 = 2/( 1/(p-1) - 1/(p+1) ) + 1
     def add_squarer(self, o: int, x: int, color_hint: Tuple[float, float, float] = None) -> int:
         n: int = self.vertices()
 
         psub1 = self.add_mover(x, -1, 0)
         padd1 = self.add_mover(x, 1, 0)
-        #
+
         inv_sub = self.add_inverter(o, psub1, (1, 1, 0))
         inv_add = self.add_inverter(o, padd1, (1, 1, 0))
         subed = self.add_suber(o, inv_sub, inv_add)
-        #
+
         inved = self.add_inverter(o, subed)
         inv2 = self.add_zoomer(o, inved, 2)
-        #
+
         inv2 = self.add_mover(inv2, 1, 0)
 
         self.register_color(n, color_hint)
