@@ -2,3 +2,4 @@
 results
 .DS_Store
 imgui.ini
+__pycache__/
